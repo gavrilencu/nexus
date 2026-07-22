@@ -495,6 +495,65 @@ class LinuxEnvironment(private val context: Context) {
     val isRunning: Boolean
         get() = shellProcess?.isAlive == true
 
+    /**
+     * Client-side Tab completion against the Ubuntu rootfs (no PTY/readline).
+     * [cwdGuest] is the guest path (e.g. `/root`), [token] is the path fragment
+     * being completed (may be relative or absolute).
+     *
+     * Returns matching names; directories are suffixed with `/`.
+     */
+    fun completePath(cwdGuest: String, token: String): List<String> {
+        if (!isInstalled) return emptyList()
+        val raw = token.trim()
+        val abs = when {
+            raw.startsWith("/") -> raw
+            raw.startsWith("~/") -> "/root/" + raw.removePrefix("~/")
+            raw == "~" -> "/root/"
+            else -> {
+                val base = cwdGuest.trimEnd('/').ifBlank { "/root" }
+                "$base/$raw"
+            }
+        }
+        val slash = abs.lastIndexOf('/')
+        val dirPart = if (slash >= 0) abs.substring(0, slash).ifBlank { "/" } else "/"
+        val prefix = if (slash >= 0) abs.substring(slash + 1) else abs
+
+        val hostDir = guestToHost(dirPart)
+        if (!hostDir.isDirectory) return emptyList()
+        val matches = hostDir.listFiles()
+            ?.asSequence()
+            ?.filter { it.name.startsWith(prefix) }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { f ->
+                val name = f.name + if (f.isDirectory) "/" else ""
+                // Rebuild the token as the user typed it (relative vs absolute).
+                when {
+                    raw.startsWith("/") -> dirPart.trimEnd('/') + "/" + name
+                    raw.startsWith("~/") -> {
+                        val rest = (dirPart.removePrefix("/root").trimStart('/') + "/" + name).trimStart('/')
+                        "~/$rest"
+                    }
+                    raw == "~" -> "~/"
+                    else -> {
+                        // Prefer completing only the last segment for relative tokens
+                        if (raw.contains('/')) {
+                            val parent = raw.substringBeforeLast('/', missingDelimiterValue = "")
+                            if (parent.isEmpty()) name else "$parent/$name"
+                        } else name
+                    }
+                }
+            }
+            ?.toList()
+            .orEmpty()
+        return matches.take(80)
+    }
+
+    private fun guestToHost(guestPath: String): File {
+        val clean = guestPath.trim().ifBlank { "/" }
+        val relative = clean.trimStart('/').replace('\\', '/')
+        return if (relative.isEmpty()) rootfs else File(rootfs, relative)
+    }
+
     companion object {
         private const val UBUNTU_VERSION = "24.04.4"
         private val EXPECTED_SHA256 = mapOf(

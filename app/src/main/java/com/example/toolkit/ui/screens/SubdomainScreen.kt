@@ -30,6 +30,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.components.WarningBanner
 import com.example.toolkit.ui.subdomain.SubdomainViewModel
 import com.example.toolkit.ui.theme.AlertAmber
@@ -133,7 +134,7 @@ fun SubdomainScreen(vm: SubdomainViewModel = viewModel()) {
                             .background(PanelGreen)
                             .padding(10.dp)
                     ) {
-                        Text(hit.host, color = NeonGreen, fontWeight = FontWeight.Bold)
+                        UrlLink(url = hit.host, showHint = true, color = NeonGreen)
                         if (hit.ips.isNotEmpty()) {
                             Text("A/AAAA: ${hit.ips.joinToString(", ")}", color = GhostWhite)
                         }

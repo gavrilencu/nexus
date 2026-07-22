@@ -48,11 +48,14 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -113,6 +116,7 @@ import com.example.toolkit.ui.screens.ApkAuditScreen
 import com.example.toolkit.ui.screens.DeepLinkScreen
 import com.example.toolkit.ui.screens.FirebaseScreen
 import com.example.toolkit.ui.screens.DexScanScreen
+import com.example.toolkit.ui.screens.MitmScreen
 import com.example.toolkit.ui.theme.AccentGradient
 import com.example.toolkit.ui.theme.AccentSoft
 import com.example.toolkit.ui.theme.AlertAmber
@@ -136,8 +140,19 @@ fun NexusApp() {
     val scope = rememberCoroutineScope()
     var showHelp by remember { mutableStateOf(false) }
     val currentDoc = moduleDocs[currentRoute]
-    // Per-category expand/collapse state for the drawer; all closed by default.
-    val drawerExpanded = remember { mutableStateMapOf<String, Boolean>() }
+    // Outside NavHost so categories stay open after opening a module and going back.
+    val dashboardExpanded = rememberSaveable(
+        saver = listSaver(
+            save = { it.toList() },
+            restore = { it.toMutableStateList() }
+        )
+    ) { mutableStateListOf<String>() }
+    val drawerExpanded = rememberSaveable(
+        saver = listSaver(
+            save = { it.toList() },
+            restore = { it.toMutableStateList() }
+        )
+    ) { mutableStateListOf<String>() }
 
     fun go(route: String) {
         navController.navigate(route) {
@@ -164,7 +179,8 @@ fun NexusApp() {
         NexusRoute.Ip.route -> "IP Tools"
         NexusRoute.Person.route -> "Person Search"
         NexusRoute.Hibp.route -> "Have I Been Pwned"
-        NexusRoute.WifiMonitor.route -> "Wi-Fi Monitor"
+        NexusRoute.WifiMonitor.route -> "Wi-Fi/SIM Monitor"
+        NexusRoute.Mitm.route -> "MITM / Proxy Capture"
         NexusRoute.LinuxTerminal.route -> "Linux Terminal"
         NexusRoute.DirScan.route -> "Content Discovery"
         NexusRoute.Fingerprint.route -> "Web Fingerprint"
@@ -219,12 +235,15 @@ fun NexusApp() {
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = BorderGreen)
                     nexusCategories.forEach { category ->
                         val modules = nexusModules.filter { it.category == category.id }
-                        val isExpanded = drawerExpanded[category.id] ?: false
+                        val isExpanded = category.id in drawerExpanded
                         DrawerCategoryHeader(
                             title = category.title,
                             count = modules.size,
                             expanded = isExpanded,
-                            onClick = { drawerExpanded[category.id] = !isExpanded }
+                            onClick = {
+                                if (isExpanded) drawerExpanded.remove(category.id)
+                                else drawerExpanded.add(category.id)
+                            }
                         )
                         AnimatedVisibility(
                             visible = isExpanded,
@@ -309,7 +328,10 @@ fun NexusApp() {
                 modifier = Modifier.padding(padding)
             ) {
                 composable(NexusRoute.Dashboard.route) {
-                    DashboardScreen { route -> go(route) }
+                    DashboardScreen(
+                        expandedCategoryIds = dashboardExpanded,
+                        onNavigate = { route -> go(route) }
+                    )
                 }
                 composable(NexusRoute.Settings.route) { SettingsScreen() }
                 composable(NexusRoute.Recon.route) { ReconScreen() }
@@ -326,6 +348,7 @@ fun NexusApp() {
                 composable(NexusRoute.Person.route) { PersonSearchScreen() }
                 composable(NexusRoute.Hibp.route) { HibpScreen() }
                 composable(NexusRoute.WifiMonitor.route) { NetworkMonitorScreen() }
+                composable(NexusRoute.Mitm.route) { MitmScreen() }
                 composable(NexusRoute.LinuxTerminal.route) { LinuxTerminalScreen() }
                 composable(NexusRoute.DirScan.route) { DirScanScreen() }
                 composable(NexusRoute.Fingerprint.route) { FingerprintScreen() }

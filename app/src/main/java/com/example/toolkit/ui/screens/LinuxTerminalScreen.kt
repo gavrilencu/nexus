@@ -141,6 +141,7 @@ fun LinuxTerminalScreen(vm: LinuxTerminalViewModel = viewModel()) {
 
         ExtraKeysRow(
             onInsert = vm::insertAtCursor,
+            onTab = vm::tabComplete,
             onHistoryPrev = vm::historyPrevious,
             onHistoryNext = vm::historyNext,
             onCtrlC = vm::sendControlC
@@ -266,6 +267,7 @@ private fun InlinePrompt(
 @Composable
 private fun ExtraKeysRow(
     onInsert: (String) -> Unit,
+    onTab: () -> Unit,
     onHistoryPrev: () -> Unit,
     onHistoryNext: () -> Unit,
     onCtrlC: () -> Unit
@@ -281,7 +283,7 @@ private fun ExtraKeysRow(
         Key("^C", onClick = onCtrlC, accent = true)
         Key("↑", onClick = onHistoryPrev)
         Key("↓", onClick = onHistoryNext)
-        Key("Tab", onClick = { onInsert("    ") })
+        Key("Tab", onClick = onTab, accent = true)
         symbols.forEach { symbol -> Key(symbol) { onInsert(symbol) } }
     }
 }

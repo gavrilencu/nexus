@@ -33,6 +33,9 @@ data class LinuxTerminalState(
     val lines: List<TerminalLine> = emptyList(),
     val history: List<String> = emptyList(),
     val historyIndex: Int = -1,
+    val cwd: String = "/root",
+    val tabMatches: List<String> = emptyList(),
+    val tabIndex: Int = -1,
     val error: String? = null,
     val architecture: String = ""
 )
@@ -66,13 +69,102 @@ class LinuxTerminalViewModel(app: Application) : AndroidViewModel(app) {
     private var nextLineId = 2L
 
     fun setInput(value: String) {
-        _state.update { it.copy(input = value, historyIndex = -1) }
+        _state.update { it.copy(input = value, historyIndex = -1, tabMatches = emptyList(), tabIndex = -1) }
     }
 
     /** Inserts a symbol/snippet at the end of the current input — for keys that are
      *  awkward to reach on a phone keyboard (|, ~, /, &, etc). */
     fun insertAtCursor(fragment: String) {
-        _state.update { it.copy(input = it.input + fragment, historyIndex = -1) }
+        _state.update {
+            it.copy(
+                input = it.input + fragment,
+                historyIndex = -1,
+                tabMatches = emptyList(),
+                tabIndex = -1
+            )
+        }
+    }
+
+    /**
+     * Tab path autocomplete against the Ubuntu rootfs (like bash completion for
+     * directories/files). Cycles matches on repeated presses; lists them when ambiguous.
+     */
+    fun tabComplete() {
+        val st = _state.value
+        if (!st.installed) return
+        val input = st.input
+        val tokenStart = input.indexOfLast { it.isWhitespace() }.let { if (it < 0) 0 else it + 1 }
+        val token = input.substring(tokenStart)
+        if (token.isEmpty() && !input.endsWith(" ") && input.isNotEmpty()) {
+            // nothing to complete mid-token empty
+        }
+
+        // Cycle existing matches
+        if (st.tabMatches.size > 1 && st.tabIndex >= 0) {
+            val next = (st.tabIndex + 1) % st.tabMatches.size
+            val completed = input.substring(0, tokenStart) + st.tabMatches[next]
+            _state.update { it.copy(input = completed, tabIndex = next, historyIndex = -1) }
+            return
+        }
+
+        val matches = environment.completePath(st.cwd, token)
+        when {
+            matches.isEmpty() -> {
+                append("tab: no matches for '$token'", LineKind.SYSTEM)
+                _state.update { it.copy(tabMatches = emptyList(), tabIndex = -1) }
+            }
+            matches.size == 1 -> {
+                val completed = input.substring(0, tokenStart) + matches[0]
+                _state.update {
+                    it.copy(
+                        input = completed,
+                        tabMatches = emptyList(),
+                        tabIndex = -1,
+                        historyIndex = -1
+                    )
+                }
+            }
+            else -> {
+                val common = longestCommonPrefix(matches)
+                val use = if (common.length > token.length) common else matches[0]
+                append("tab: ${matches.joinToString("  ")}", LineKind.SYSTEM)
+                _state.update {
+                    it.copy(
+                        input = input.substring(0, tokenStart) + use,
+                        tabMatches = matches,
+                        tabIndex = if (use == matches[0]) 0 else -1,
+                        historyIndex = -1
+                    )
+                }
+            }
+        }
+    }
+
+    private fun longestCommonPrefix(items: List<String>): String {
+        if (items.isEmpty()) return ""
+        var prefix = items[0]
+        for (i in 1 until items.size) {
+            while (!items[i].startsWith(prefix)) {
+                if (prefix.isEmpty()) return ""
+                prefix = prefix.dropLast(1)
+            }
+        }
+        return prefix
+    }
+
+    private fun updateCwdFromCommand(command: String) {
+        val trimmed = command.trim()
+        if (!trimmed.startsWith("cd")) return
+        val arg = trimmed.removePrefix("cd").trim().ifBlank { "~" }
+        val cur = _state.value.cwd
+        val next = when {
+            arg == "~" || arg == "\$HOME" -> "/root"
+            arg.startsWith("/") -> arg.trimEnd('/').ifBlank { "/" }
+            arg == ".." -> cur.substringBeforeLast('/', missingDelimiterValue = "/").ifBlank { "/" }
+            arg.startsWith("~/") -> "/root/" + arg.removePrefix("~/").trimEnd('/')
+            else -> (cur.trimEnd('/') + "/" + arg).replace("//", "/")
+        }
+        _state.update { it.copy(cwd = next.ifBlank { "/root" }) }
     }
 
     fun installLinux() {
@@ -140,11 +232,14 @@ class LinuxTerminalViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         append("root@nexus:~# $command", LineKind.COMMAND)
+        updateCwdFromCommand(command)
         _state.update {
             it.copy(
                 input = "",
                 history = (listOf(command) + it.history.filterNot { old -> old == command }).take(80),
                 historyIndex = -1,
+                tabMatches = emptyList(),
+                tabIndex = -1,
                 error = null
             )
         }

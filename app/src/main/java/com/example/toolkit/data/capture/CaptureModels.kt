@@ -66,7 +66,8 @@ data class LanHost(
     val deviceName: String?,
     val manufacturer: String? = null,
     val modelName: String? = null,
-    val nameSource: String? = null, // "mDNS" | "SSDP" | "NetBIOS" | "HTTP" | "DNS" | null
+    val userName: String? = null,   // Android user / owner (this phone only)
+    val nameSource: String? = null, // "mDNS" | "SSDP" | "NetBIOS" | "HTTP" | "DNS" | "System" | null
     val role: String,
     val reachable: Boolean,
     val openPorts: List<PortHint> = emptyList(),
@@ -75,14 +76,15 @@ data class LanHost(
     /** Best real-world name we could establish for this device, in priority order. */
     val displayName: String
         get() = deviceName?.takeIf { it.isNotBlank() }
-            ?: hostname?.takeIf { it.isNotBlank() }
+            ?: hostname?.takeIf { it.isNotBlank() && it != ip }
             ?: listOfNotNull(manufacturer, modelName).joinToString(" ").takeIf { it.isNotBlank() }
-            ?: vendor?.takeIf { it.isNotBlank() && it != "Unknown vendor" }
+            ?: vendor?.takeIf { it.isNotBlank() && it != "Unknown vendor" }?.let { "$it device" }
             ?: "Unknown device"
 
     /** Brand + model line for the detail card, when we have either. */
     val brandModel: String?
         get() = listOfNotNull(manufacturer, modelName).joinToString(" ").takeIf { it.isNotBlank() }
+            ?: vendor?.takeIf { it.isNotBlank() && it != "Unknown vendor" }
 }
 
 data class PortHint(

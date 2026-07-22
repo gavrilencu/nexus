@@ -225,11 +225,12 @@ fun NexusButton(
 }
 
 @Composable
-fun StatusChip(text: String, color: Color = NeonGreen) {
+fun StatusChip(text: String, color: Color = NeonGreen, onClick: (() -> Unit)? = null) {
     Box(
         modifier = Modifier
             .background(color.copy(alpha = 0.16f), RoundedCornerShape(100.dp))
             .border(1.dp, color.copy(alpha = 0.4f), RoundedCornerShape(100.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 10.dp, vertical = 5.dp)
     ) {
         Text(

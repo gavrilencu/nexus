@@ -49,6 +49,7 @@ sealed class NexusRoute(val route: String, val title: String) {
     data object DeepLink : NexusRoute("deeplink", "Deep-Link Tester")
     data object Firebase : NexusRoute("firebase", "Firebase Checker")
     data object DexScan : NexusRoute("dexscan", "DEX API Scanner")
+    data object Mitm : NexusRoute("mitm", "MITM / Proxy Capture")
 
     companion object {
         val modules = listOf(
@@ -59,7 +60,8 @@ sealed class NexusRoute(val route: String, val title: String) {
             ApkInspector,
             Tls, Headers, WebVuln, Fuzzer, JsRecon, Exposed, Graphql, Takeover, WebSocket,
             CrtSh, Wayback, Exif, Dork, Shodan,
-            ApkAudit, DeepLink, Firebase, DexScan
+            ApkAudit, DeepLink, Firebase, DexScan,
+            Mitm
         )
     }
 }

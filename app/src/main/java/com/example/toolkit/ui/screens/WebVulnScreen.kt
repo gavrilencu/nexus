@@ -28,6 +28,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.components.WarningBanner
 import com.example.toolkit.ui.theme.AlertAmber
 import com.example.toolkit.ui.theme.AlertRed
@@ -101,8 +102,6 @@ private fun FindingCard(f: VulnFinding) {
         Spacer(modifier = Modifier.height(4.dp))
         Text(f.evidence, color = color, modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(4.dp))
-        SelectionContainer {
-            Text(f.requestUrl, color = TerminalGray, style = MaterialTheme.typography.bodySmall)
-        }
+        UrlLink(url = f.requestUrl, showHint = true)
     }
 }

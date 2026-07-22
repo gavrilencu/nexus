@@ -140,7 +140,8 @@ val nexusModules: List<NexusModule> = listOf(
 
     // Traffic & Network
     NexusModule("Traffic Monitor", "HTTP capture · headers · latency", Icons.Default.Dns, NexusRoute.Traffic.route, Cat.TRAFFIC),
-    NexusModule("Wi-Fi Monitor", "Devices · IP · hostname · live traffic in app", Icons.Default.WifiTethering, NexusRoute.WifiMonitor.route, Cat.TRAFFIC),
+    NexusModule("Wi-Fi/SIM Monitor", "Devices · SIM · live traffic decoded", Icons.Default.WifiTethering, NexusRoute.WifiMonitor.route, Cat.TRAFFIC),
+    NexusModule("MITM / Proxy Capture", "HTTPS decrypt · req/res · host filter", Icons.Default.VpnKey, NexusRoute.Mitm.route, Cat.TRAFFIC),
 
     // Web App Testing
     NexusModule("API Lab", "Probe endpoints · inspect responses", Icons.Default.Api, NexusRoute.Api.route, Cat.WEB),

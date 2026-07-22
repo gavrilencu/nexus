@@ -29,6 +29,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.theme.AccentSoft
 import com.example.toolkit.ui.theme.AlertAmber
 import com.example.toolkit.ui.theme.AlertRed
@@ -87,17 +88,15 @@ fun WaybackScreen(vm: WaybackViewModel = viewModel()) {
             Spacer(modifier = Modifier.height(12.dp))
             val urls = if (state.onlyInteresting) res.urls.filter { it.interesting } else res.urls
             NexusPanel(title = "URLs (${urls.size})") {
-                SelectionContainer {
-                    Column {
-                        urls.take(1500).forEach { u ->
-                            Text(
-                                u.url,
-                                color = if (u.interesting) AlertAmber else TerminalGray,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(vertical = 1.dp)
-                            )
-                        }
-                    }
+                Text("tap open · hold copy", color = MuteGreen)
+                Spacer(modifier = Modifier.height(6.dp))
+                urls.take(1500).forEach { u ->
+                    UrlLink(
+                        url = u.url,
+                        color = if (u.interesting) AlertAmber else TerminalGray,
+                        showHint = false,
+                        maxLines = 2
+                    )
                 }
             }
         }

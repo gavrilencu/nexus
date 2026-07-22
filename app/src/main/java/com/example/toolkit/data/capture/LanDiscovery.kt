@@ -62,6 +62,7 @@ class LanDiscovery(context: Context) {
 
         val arp = readArpTable()
         val sem = Semaphore(32)
+        val selfIdentity = DeviceIdentity.local(appContext)
 
         val hosts = coroutineScope {
             (1..254).map { host ->
@@ -107,14 +108,17 @@ class LanDiscovery(context: Context) {
                             vendor = mac?.let { OuiLookup.vendor(it) },
                             hostname = dnsName,
                             deviceName = when {
-                                isSelf -> "This phone (NEXUS)"
+                                isSelf -> selfIdentity.displayName
                                 !nbName.isNullOrBlank() -> nbName
                                 !httpName.isNullOrBlank() -> httpName
                                 !dnsName.isNullOrBlank() && dnsName != ip -> dnsName.substringBefore('.')
                                 else -> null
                             },
+                            manufacturer = if (isSelf) selfIdentity.manufacturer else null,
+                            modelName = if (isSelf) selfIdentity.model else null,
+                            userName = if (isSelf) selfIdentity.userName else null,
                             nameSource = when {
-                                isSelf -> null
+                                isSelf -> "System"
                                 !nbName.isNullOrBlank() -> "NetBIOS"
                                 !httpName.isNullOrBlank() -> "HTTP"
                                 !dnsName.isNullOrBlank() && dnsName != ip -> "DNS"

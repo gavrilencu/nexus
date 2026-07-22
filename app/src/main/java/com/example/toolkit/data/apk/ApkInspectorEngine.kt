@@ -22,6 +22,8 @@ import java.util.zip.ZipInputStream
 
 data class TechFinding(val name: String, val evidence: String)
 data class SecretFinding(val type: String, val value: String)
+/** Keyword / interesting string hit from DEX or config assets. */
+data class KeywordHit(val category: String, val value: String)
 data class ComponentInfo(val name: String, val exported: Boolean)
 data class DirSize(val name: String, val bytes: Long, val count: Int)
 data class FileTypeCount(val ext: String, val count: Int, val bytes: Long)
@@ -98,6 +100,8 @@ data class ApkReport(
     val ips: List<String>,
     val emails: List<String>,
     val secrets: List<SecretFinding>,
+    val keywords: List<KeywordHit> = emptyList(),
+    val apiPaths: List<String> = emptyList(),
     val topDirs: List<DirSize>,
     val fileTypes: List<FileTypeCount>,
     val entries: List<EntryNode>,
@@ -124,9 +128,12 @@ class ApkInspectorEngine {
 
     private val maxScanBytesPerDex = 16L * 1024 * 1024
     private val maxTotalScanBytes = 64L * 1024 * 1024
-    private val maxUrls = 400
-    private val maxList = 200
+    private val maxUrls = 800
+    private val maxList = 400
+    private val maxKeywords = 500
+    private val maxApiPaths = 400
     private val maxEntries = 25000
+    private val maxTextAssetBytes = 256L * 1024
 
     private val cacheFiles = mutableListOf<File>()
 
@@ -361,7 +368,10 @@ class ApkInspectorEngine {
         methodCount = scan.methodCount, stringCount = scan.stringCount,
         obfuscationScore = scan.obfuscationScore(), obfuscationLabel = scan.obfuscationLabel(),
         urls = scan.urls.take(maxUrls), ips = scan.ips.take(maxList), emails = scan.emails.take(maxList),
-        secrets = scan.secrets.take(maxList), topDirs = scan.topDirs(), fileTypes = scan.fileTypes(),
+        secrets = scan.secrets.take(maxList),
+        keywords = scan.keywords.take(maxKeywords),
+        apiPaths = scan.apiPaths.take(maxApiPaths),
+        topDirs = scan.topDirs(), fileTypes = scan.fileTypes(),
         entries = scan.entries, entryCount = scan.entryCount, manifestXml = manifestXml, notes = notes
     )
 
@@ -384,6 +394,8 @@ class ApkInspectorEngine {
         val ips = LinkedHashSet<String>()
         val emails = LinkedHashSet<String>()
         val secrets = LinkedHashSet<SecretFinding>()
+        val keywords = LinkedHashSet<KeywordHit>()
+        val apiPaths = LinkedHashSet<String>()
         val sdks = linkedSetOf<String>()
         var v1Signed = false
         var truncated = false
@@ -460,10 +472,49 @@ class ApkInspectorEngine {
                     readDexHeader(zf, entry, scan)
                     if (scannedBytes < maxTotalScanBytes) scannedBytes += scanDexStrings(zf, entry, scan)
                     else scan.truncated = true
+                } else if (
+                    scannedBytes < maxTotalScanBytes &&
+                    size in 1..maxTextAssetBytes &&
+                    isScannableTextAsset(name)
+                ) {
+                    scannedBytes += scanTextAsset(zf, entry, scan)
                 }
             }
         }
         return scan
+    }
+
+    private fun isScannableTextAsset(name: String): Boolean {
+        val lower = name.lowercase(Locale.ROOT)
+        val file = lower.substringAfterLast('/')
+        // Skip binary-heavy resources; focus on configs & web assets where secrets hide.
+        if (lower.startsWith("res/") && !file.endsWith(".xml") && !file.endsWith(".json")) return false
+        return TEXT_ASSET_EXT.any { file.endsWith(it) } ||
+            file == "google-services.json" ||
+            file.endsWith(".env") ||
+            file.contains("config") && (file.endsWith(".xml") || file.endsWith(".json") || file.endsWith(".properties"))
+    }
+
+    private fun scanTextAsset(zf: ZipFile, entry: ZipEntry, scan: Scan): Long {
+        return try {
+            zf.getInputStream(entry).use { input ->
+                val bytes = readUpTo(input, maxTextAssetBytes.toInt())
+                val text = String(bytes, Charsets.UTF_8)
+                // Split on common separators so we still catch short tokens.
+                text.split('\n', '\r', '\u0000', '"', '\'', ' ', '\t', '<', '>', ';')
+                    .asSequence()
+                    .map { it.trim() }
+                    .filter { it.length in 4..400 }
+                    .forEach { processToken(it, scan) }
+                // Also run full-line regex passes for URLs/emails inside long lines.
+                text.lineSequence().take(4_000).forEach { line ->
+                    if (line.length in 8..800) processToken(line.trim(), scan)
+                }
+                bytes.size.toLong()
+            }
+        } catch (_: Exception) {
+            0L
+        }
     }
 
     private fun accumulateDir(name: String, size: Long, scan: Scan) {
@@ -565,14 +616,26 @@ class ApkInspectorEngine {
             if (token.dropLast(1).substringAfterLast('/').length <= 2) scan.descriptorShort++
         }
 
-        if (token.contains("://") && scan.urls.size < maxUrls)
-            URL_RE.findAll(token).forEach { if (scan.urls.size < maxUrls) scan.urls.add(it.value) }
-        if (token.contains('@') && scan.emails.size < maxList)
+        if ((token.contains("://") || token.contains("http")) && scan.urls.size < maxUrls) {
+            URL_RE.findAll(token).forEach { if (scan.urls.size < maxUrls) scan.urls.add(cleanUrl(it.value)) }
+        }
+        if (token.contains('@') && scan.emails.size < maxList) {
             EMAIL_RE.findAll(token).forEach { if (scan.emails.size < maxList) scan.emails.add(it.value) }
-        if (token.length in 7..45 && token[0].isDigit() && token.contains('.') && scan.ips.size < maxList)
+        }
+        if (token.length in 7..45 && token[0].isDigit() && token.contains('.') && scan.ips.size < maxList) {
             IP_RE.findAll(token).forEach { if (scan.ips.size < maxList) scan.ips.add(it.value) }
+        }
+        if (scan.apiPaths.size < maxApiPaths) {
+            API_PATH_RE.findAll(token).forEach {
+                if (scan.apiPaths.size < maxApiPaths) scan.apiPaths.add(it.value)
+            }
+        }
         if (scan.secrets.size < maxList) matchSecret(token, scan)
+        if (scan.keywords.size < maxKeywords) matchKeyword(token, scan)
     }
+
+    private fun cleanUrl(url: String): String =
+        url.trimEnd('.', ',', ';', ')', ']', '}', '"', '\'', '\\')
 
     private fun detectSdk(token: String, scan: Scan) {
         for ((prefix, label) in SDK_MARKERS) {
@@ -582,7 +645,7 @@ class ApkInspectorEngine {
 
     private fun matchSecret(token: String, scan: Scan) {
         fun add(type: String, value: String) {
-            if (scan.secrets.size < maxList) scan.secrets.add(SecretFinding(type, value.take(140)))
+            if (scan.secrets.size < maxList) scan.secrets.add(SecretFinding(type, value.take(180)))
         }
         if (token.startsWith("AIza")) GOOGLE_KEY_RE.find(token)?.let { add("Google API key", it.value) }
         if (token.startsWith("AKIA")) AWS_KEY_RE.find(token)?.let { add("AWS access key", it.value) }
@@ -590,9 +653,40 @@ class ApkInspectorEngine {
         if (token.startsWith("ghp_") || token.startsWith("gho_")) GITHUB_RE.find(token)?.let { add("GitHub token", it.value) }
         if (token.startsWith("sk_") || token.startsWith("pk_")) STRIPE_RE.find(token)?.let { add("Stripe key", it.value) }
         if (token.startsWith("eyJ")) JWT_RE.find(token)?.let { add("JWT", it.value) }
-        if (token.contains("firebaseio.com")) FIREBASE_RE.find(token)?.let { add("Firebase DB", it.value) }
+        if (token.contains("firebaseio.com") || token.contains("firebaseapp.com")) {
+            FIREBASE_RE.find(token)?.let { add("Firebase", it.value) }
+        }
         if (token.contains("-----BEGIN") && token.contains("PRIVATE")) add("Private key block", token)
         if (token.contains("s3.amazonaws.com") || token.contains(".s3.")) add("S3 bucket URL", token.take(140))
+
+        PASSWORD_KV_RE.findAll(token).forEach { add("Password field", "${it.groupValues[1]}=${it.groupValues[2]}") }
+        APIKEY_KV_RE.findAll(token).forEach { add("API key field", "${it.groupValues[1]}=${it.groupValues[2]}") }
+        TOKEN_KV_RE.findAll(token).forEach { add("Token field", "${it.groupValues[1]}=${it.groupValues[2]}") }
+        BEARER_RE.find(token)?.let { add("Bearer token", it.groupValues[1]) }
+        BASIC_AUTH_RE.find(token)?.let { add("Basic Auth", it.groupValues[1]) }
+        AUTH_HEADER_RE.find(token)?.let { add("Authorization", it.value.take(160)) }
+    }
+
+    private fun matchKeyword(token: String, scan: Scan) {
+        val lower = token.lowercase(Locale.ROOT)
+        fun add(cat: String) {
+            if (scan.keywords.size < maxKeywords) scan.keywords.add(KeywordHit(cat, token.take(220)))
+        }
+        when {
+            lower.contains("password") || lower.contains("passwd") || lower.contains("pwd=") ||
+                lower.contains("\"pwd\"") || lower.contains("passphrase") -> add("password")
+            lower.contains("apikey") || lower.contains("api_key") || lower.contains("api-key") ||
+                lower.contains("\"key\"") && (lower.contains("api") || lower.contains("secret")) -> add("apikey")
+            lower.contains("token") || lower.contains("bearer") || lower.contains("refresh_token") ||
+                lower.contains("access_token") || lower.contains("id_token") -> add("token")
+            lower.contains("secret") || lower.contains("client_secret") || lower.contains("app_secret") -> add("secret")
+            lower.contains("authorization") || lower.contains("auth_token") || lower.contains("x-api-key") -> add("auth")
+            lower.contains("username") || lower.contains("user_name") || lower.contains("login=") ||
+                lower.contains("\"email\"") -> add("credential")
+            lower.contains("http://") || lower.contains("https://") || lower.contains("/api/") ||
+                lower.contains("/v1/") || lower.contains("/v2/") || lower.contains("graphql") -> add("api")
+            else -> Unit
+        }
     }
 
     private fun deriveLanguages(scan: Scan): List<String> {
@@ -732,6 +826,7 @@ class ApkInspectorEngine {
             dexCount = 0, classCount = 0, methodCount = 0, stringCount = 0,
             obfuscationScore = 0, obfuscationLabel = "Unknown",
             urls = emptyList(), ips = emptyList(), emails = emptyList(), secrets = emptyList(),
+            keywords = emptyList(), apiPaths = emptyList(),
             topDirs = emptyList(), fileTypes = emptyList(), entries = emptyList(), entryCount = 0,
             manifestXml = null, notes = notes
         )
@@ -813,16 +908,34 @@ class ApkInspectorEngine {
         MessageDigest.getInstance(algo).digest(data).joinToString("") { "%02x".format(it) }
 
     companion object {
-        private val URL_RE = Regex("""https?://[^\s"'<>()\\]+""")
+        private val URL_RE = Regex("""https?://[^\s"'<>()\\\[\]]+""")
         private val EMAIL_RE = Regex("""[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}""")
         private val IP_RE = Regex("""\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b""")
+        private val API_PATH_RE = Regex("""(?i)(?:^|["'\s])(/?(?:api|v[12]|graphql|rest|oauth|auth|login|token|user(?:s)?|admin)(?:/[A-Za-z0-9._~\-/%?=&#+]{0,120})?)""")
         private val GOOGLE_KEY_RE = Regex("""AIza[0-9A-Za-z\-_]{35}""")
         private val AWS_KEY_RE = Regex("""AKIA[0-9A-Z]{16}""")
         private val SLACK_RE = Regex("""xox[baprs]-[0-9A-Za-z-]{10,}""")
         private val GITHUB_RE = Regex("""gh[po]_[0-9A-Za-z]{36}""")
         private val STRIPE_RE = Regex("""(?:sk|pk)_(?:live|test)_[0-9A-Za-z]{16,}""")
         private val JWT_RE = Regex("""eyJ[A-Za-z0-9_-]{6,}\.eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}""")
-        private val FIREBASE_RE = Regex("""[a-z0-9-]+\.firebaseio\.com""")
+        private val FIREBASE_RE = Regex("""[a-z0-9-]+\.(?:firebaseio|firebaseapp)\.com""")
+        private val PASSWORD_KV_RE = Regex(
+            """(?i)(pass(?:word|wd)?|pwd|passwd|passphrase)\s*[:=]\s*["']?([^\s"'&<>]{1,80})"""
+        )
+        private val APIKEY_KV_RE = Regex(
+            """(?i)(api[_-]?key|apikey|access[_-]?key|client[_-]?id|app[_-]?key|x-api-key)\s*[:=]\s*["']?([A-Za-z0-9_\-./+=]{6,120})"""
+        )
+        private val TOKEN_KV_RE = Regex(
+            """(?i)((?:access|refresh|id|auth|bearer)?[_-]?token|session[_-]?id)\s*[:=]\s*["']?([A-Za-z0-9_\-./+=]{6,200})"""
+        )
+        private val BEARER_RE = Regex("""(?i)Bearer\s+([A-Za-z0-9._\-]{8,})""")
+        private val BASIC_AUTH_RE = Regex("""(?i)Basic\s+([A-Za-z0-9+/=]{8,})""")
+        private val AUTH_HEADER_RE = Regex("""(?i)Authorization\s*[:=]\s*.{8,160}""")
+
+        private val TEXT_ASSET_EXT = listOf(
+            ".json", ".xml", ".js", ".html", ".htm", ".properties", ".txt", ".env",
+            ".yml", ".yaml", ".cfg", ".ini", ".conf", ".plist", ".csv"
+        )
 
         private val TEXT_EXT = listOf(
             ".txt", ".xml", ".json", ".js", ".ts", ".html", ".htm", ".css", ".properties", ".md",

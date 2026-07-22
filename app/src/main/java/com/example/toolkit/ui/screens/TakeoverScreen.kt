@@ -22,6 +22,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.takeover.TakeoverViewModel
 import com.example.toolkit.ui.theme.AlertAmber
 import com.example.toolkit.ui.theme.AlertRed
@@ -70,8 +71,12 @@ fun TakeoverScreen(vm: TakeoverViewModel = viewModel()) {
             )
             Spacer(modifier = Modifier.height(12.dp))
             NexusPanel(title = "Result") {
-                KeyValueRow("Host", res.host)
-                KeyValueRow("CNAME", res.cname.joinToString(" → ").ifBlank { "—" })
+                UrlLink(url = res.host, label = "Host", showHint = false)
+                if (res.cname.isNotEmpty()) {
+                    res.cname.forEach { UrlLink(url = it, label = "CNAME", showHint = false) }
+                } else {
+                    KeyValueRow("CNAME", "—")
+                }
                 KeyValueRow("Provider", res.service ?: "—")
                 KeyValueRow("Fingerprint", res.fingerprint ?: "—")
                 Spacer(modifier = Modifier.height(8.dp))

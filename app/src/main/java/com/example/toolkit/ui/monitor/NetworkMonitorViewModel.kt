@@ -9,10 +9,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.toolkit.data.capture.CapturedPacket
 import com.example.toolkit.data.capture.CaptureStats
 import com.example.toolkit.data.capture.CredentialSniffer
+import com.example.toolkit.data.capture.IpInfo
+import com.example.toolkit.data.capture.IpInfoEngine
 import com.example.toolkit.data.capture.LanDiscovery
 import com.example.toolkit.data.capture.LanHost
 import com.example.toolkit.data.capture.NexusCaptureService
 import com.example.toolkit.data.capture.PacketCaptureBus
+import com.example.toolkit.data.capture.SimInfo
+import com.example.toolkit.data.capture.SimInfoProvider
 import com.example.toolkit.data.capture.TrafficFlow
 import com.example.toolkit.data.capture.WifiInfoProvider
 import com.example.toolkit.data.capture.WifiSessionInfo
@@ -27,6 +31,7 @@ import kotlinx.coroutines.launch
 
 data class NetworkMonitorUiState(
     val wifi: WifiSessionInfo? = null,
+    val sim: SimInfo = SimInfo.NONE,
     val tab: String = "DEVICES", // DEVICES | TRAFFIC | FLOWS
     val filter: String = "ALL", // ALL | TCP | UDP | DNS | ICMP | CREDS
     val query: String = "",
@@ -35,7 +40,15 @@ data class NetworkMonitorUiState(
     val lanScanning: Boolean = false,
     val lanError: String? = null,
     val expandedPacketId: Long? = null,
-    val statusMessage: String = "Idle"
+    val statusMessage: String = "Idle",
+    val ipLookups: Map<String, IpLookup> = emptyMap()
+)
+
+data class IpLookup(
+    val ip: String,
+    val loading: Boolean = false,
+    val info: IpInfo? = null,
+    val error: String? = null
 )
 
 class NetworkMonitorViewModel(app: Application) : AndroidViewModel(app) {
@@ -63,7 +76,12 @@ class NetworkMonitorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshWifi() {
-        _ui.update { it.copy(wifi = WifiInfoProvider.current(getApplication())) }
+        _ui.update {
+            it.copy(
+                wifi = WifiInfoProvider.current(getApplication()),
+                sim = SimInfoProvider.current(getApplication())
+            )
+        }
     }
 
     fun onTab(v: String) = _ui.update { it.copy(tab = v) }
@@ -162,6 +180,39 @@ class NetworkMonitorViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun clearPackets() = PacketCaptureBus.clear()
+
+    /** The remote (non-phone, public) endpoint of a flow — the one worth identifying. */
+    fun remoteIpOf(sourceIp: String, destIp: String): String {
+        val phoneIp = _ui.value.wifi?.ipAddress
+        return when {
+            destIp == phoneIp -> sourceIp
+            sourceIp == phoneIp -> destIp
+            IpInfoEngine.isPrivate(sourceIp) && !IpInfoEngine.isPrivate(destIp) -> destIp
+            !IpInfoEngine.isPrivate(sourceIp) && IpInfoEngine.isPrivate(destIp) -> sourceIp
+            else -> destIp
+        }
+    }
+
+    fun lookupIp(ip: String) {
+        val existing = _ui.value.ipLookups[ip]
+        if (existing?.loading == true) return
+        _ui.update { s ->
+            s.copy(ipLookups = s.ipLookups + (ip to IpLookup(ip = ip, loading = true)))
+        }
+        viewModelScope.launch {
+            val result = try {
+                val info = IpInfoEngine.lookup(ip)
+                IpLookup(ip = ip, loading = false, info = info, error = info.error)
+            } catch (e: Exception) {
+                IpLookup(ip = ip, loading = false, error = e.message ?: "Eroare lookup")
+            }
+            _ui.update { s -> s.copy(ipLookups = s.ipLookups + (ip to result)) }
+        }
+    }
+
+    fun clearIpLookup(ip: String) {
+        _ui.update { s -> s.copy(ipLookups = s.ipLookups - ip) }
+    }
 
     fun scanLan() {
         refreshWifi()

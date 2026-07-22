@@ -32,6 +32,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.firebase.FirebaseViewModel
 import com.example.toolkit.ui.theme.AlertRed
 import com.example.toolkit.ui.theme.GhostWhite
@@ -105,10 +106,7 @@ private fun CheckCard(c: FirebaseCheck) {
             StatusChip("HTTP ${c.status}", color = MuteGreen)
         }
         Spacer(modifier = Modifier.height(6.dp))
-        SelectionContainer {
-            Text(c.url, color = GhostWhite, fontFamily = FontFamily.Monospace,
-                style = MaterialTheme.typography.bodySmall)
-        }
+        UrlLink(url = c.url, showHint = true)
         Spacer(modifier = Modifier.height(4.dp))
         Text(c.detail, color = if (c.readable) AlertRed else GhostWhite)
         c.sample?.let {

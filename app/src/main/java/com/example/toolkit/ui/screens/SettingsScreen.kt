@@ -180,6 +180,7 @@ fun SettingsScreen() {
             KeyValueRow("Version", "v1.2")
             KeyValueRow("Build", "Enterprise Security Toolkit")
             KeyValueRow("Usage", "Authorized targets only", valueColor = NeonGreen)
+            KeyValueRow("Developed by", "Gavrilencu Grigore for internal testing", valueColor = NeonGreen)
         }
 
         Spacer(modifier = Modifier.height(16.dp))

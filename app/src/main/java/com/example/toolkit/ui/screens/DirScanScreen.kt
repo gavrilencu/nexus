@@ -27,6 +27,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.components.WarningBanner
 import com.example.toolkit.ui.dirscan.DirScanViewModel
 import com.example.toolkit.ui.theme.AlertAmber
@@ -98,9 +99,11 @@ fun DirScanScreen(vm: DirScanViewModel = viewModel()) {
         if (state.hits.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
             NexusPanel(title = "FOUND (${state.hits.size})") {
+                Text("tap open · hold copy", color = MuteGreen)
+                Spacer(modifier = Modifier.height(8.dp))
                 state.hits.forEach { hit ->
                     HitRow(hit)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                 }
             }
         }
@@ -123,6 +126,9 @@ private fun HitRow(hit: DirHit) {
             Text(hit.path, color = GhostWhite, fontWeight = FontWeight.SemiBold)
         }
         Text("${hit.size} bytes", color = MuteGreen, modifier = Modifier.padding(top = 2.dp))
-        hit.location?.let { Text("→ $it", color = TerminalGray) }
+        UrlLink(url = hit.url, showHint = false)
+        hit.location?.let { loc ->
+            UrlLink(url = loc, label = "redirect →", color = TerminalGray, showHint = false)
+        }
     }
 }

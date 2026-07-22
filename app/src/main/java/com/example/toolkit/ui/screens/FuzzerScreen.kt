@@ -26,6 +26,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.fuzzer.FuzzerViewModel
 import com.example.toolkit.ui.theme.AlertAmber
 import com.example.toolkit.ui.theme.AlertRed
@@ -102,7 +103,7 @@ private fun HitCard(h: FuzzHit) {
             Text(h.word, color = GhostWhite, fontWeight = FontWeight.SemiBold)
         }
         Spacer(modifier = Modifier.height(4.dp))
-        Text(h.url, color = TerminalGray, style = MaterialTheme.typography.bodySmall)
+        UrlLink(url = h.url, showHint = true)
         Spacer(modifier = Modifier.height(2.dp))
         Text("size=${h.size}  words=${h.words}  lines=${h.lines}", color = MuteGreen,
             style = MaterialTheme.typography.bodySmall)

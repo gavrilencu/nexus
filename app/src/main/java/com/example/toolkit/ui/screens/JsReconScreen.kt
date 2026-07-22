@@ -28,6 +28,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.jsrecon.JsReconViewModel
 import com.example.toolkit.ui.theme.AlertRed
 import com.example.toolkit.ui.theme.GhostWhite
@@ -80,13 +81,10 @@ fun JsReconScreen(vm: JsReconViewModel = viewModel()) {
             if (res.endpoints.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 NexusPanel(title = "Endpoints") {
-                    SelectionContainer {
-                        Column {
-                            res.endpoints.forEach {
-                                Text(it, color = GhostWhite, style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(vertical = 1.dp))
-                            }
-                        }
+                    Text("tap open · hold copy", color = MuteGreen)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    res.endpoints.forEach { ep ->
+                        UrlLink(url = ep, baseUrl = state.url, showHint = false, maxLines = 2)
                     }
                 }
             }
@@ -94,9 +92,10 @@ fun JsReconScreen(vm: JsReconViewModel = viewModel()) {
             if (res.jsFiles.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 NexusPanel(title = "JS files") {
-                    res.jsFiles.forEach {
-                        Text(it, color = TerminalGray, style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(vertical = 1.dp))
+                    Text("tap open · hold copy", color = MuteGreen)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    res.jsFiles.forEach { js ->
+                        UrlLink(url = js, color = TerminalGray, showHint = false, maxLines = 2)
                     }
                 }
             }

@@ -30,9 +30,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,12 +61,11 @@ import com.example.toolkit.ui.theme.TerminalGray
 import com.example.toolkit.ui.theme.VoidBlack
 
 @Composable
-fun DashboardScreen(onNavigate: (String) -> Unit) {
-    // Hoisted here (inside the always-mounted nav graph) so it survives
-    // lock/unlock cycles just like every other screen's state now does.
-    var query by remember { mutableStateOf("") }
-    // Per-category expand/collapse state; all sections start expanded.
-    val expanded = remember { mutableStateMapOf<String, Boolean>() }
+fun DashboardScreen(
+    expandedCategoryIds: MutableList<String>,
+    onNavigate: (String) -> Unit
+) {
+    var query by rememberSaveable { mutableStateOf("") }
 
     val filtered = remember(query) {
         if (query.isBlank()) nexusModules
@@ -108,12 +107,15 @@ fun DashboardScreen(onNavigate: (String) -> Unit) {
 
         if (query.isBlank()) {
             nexusCategories.forEach { category ->
-                val isExpanded = expanded[category.id] ?: false
+                val isExpanded = category.id in expandedCategoryIds
                 CategorySection(
                     category = category,
                     count = modulesIn(category.id).size,
                     expanded = isExpanded,
-                    onToggle = { expanded[category.id] = !isExpanded }
+                    onToggle = {
+                        if (isExpanded) expandedCategoryIds.remove(category.id)
+                        else expandedCategoryIds.add(category.id)
+                    }
                 )
                 AnimatedVisibility(
                     visible = isExpanded,

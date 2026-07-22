@@ -37,6 +37,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.toolkit.data.capture.CapturedPacket
 import com.example.toolkit.data.capture.CredentialSniffer
 import com.example.toolkit.data.capture.LanHost
+import com.example.toolkit.data.capture.PayloadDecoder
 import com.example.toolkit.data.capture.TrafficFlow
 import com.example.toolkit.ui.components.KeyValueRow
 import com.example.toolkit.ui.components.NexusButton
@@ -44,6 +45,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.components.WarningBanner
 import com.example.toolkit.ui.monitor.NetworkMonitorViewModel
 import com.example.toolkit.ui.theme.AlertRed
@@ -106,8 +108,8 @@ fun NetworkMonitorScreen(vm: NetworkMonitorViewModel = viewModel()) {
             .padding(16.dp)
     ) {
         ScreenHeader(
-            title = "Wi‑Fi Monitor",
-            subtitle = "Dispozitive pe rețea · IP · nume · trafic live în app"
+            title = "Wi‑Fi/SIM Monitor",
+            subtitle = "Dispozitive · SIM/celular · IP · nume · trafic live decodat"
         )
         Spacer(modifier = Modifier.height(8.dp))
         WarningBanner(
@@ -157,6 +159,32 @@ fun NetworkMonitorScreen(vm: NetworkMonitorViewModel = viewModel()) {
                             onClick = vm::scanLan,
                             enabled = !ui.lanScanning
                         )
+                    }
+                }
+            }
+
+            item {
+                NexusPanel(title = "SIM / CELULAR") {
+                    val s = ui.sim
+                    if (!s.hasTelephony) {
+                        Text("Fără modul de telefonie (SIM) pe acest dispozitiv.", color = MuteGreen)
+                    } else {
+                        KeyValueRow("SIM", s.simState)
+                        KeyValueRow("Rețea celulară", s.networkType)
+                        KeyValueRow("Date mobile", s.dataState)
+                        if (s.cards.isEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("SIM neinserat sau blocat.", color = MuteGreen, fontSize = 12.sp)
+                        }
+                        s.cards.forEach { c ->
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("SIM ${c.slot + 1}", color = NeonGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            KeyValueRow("Operator", c.carrier)
+                            KeyValueRow("Operator SIM", c.simOperator)
+                            KeyValueRow("Țară", c.countryIso)
+                            KeyValueRow("Număr", c.phoneNumber ?: "— (permisiune necesară)")
+                            KeyValueRow("Roaming", if (c.roaming) "DA" else "Nu")
+                        }
                     }
                 }
             }
@@ -308,7 +336,16 @@ fun NetworkMonitorScreen(vm: NetworkMonitorViewModel = viewModel()) {
                         }
                     }
                     items(flows, key = { it.key }) { flow ->
-                        FlowCard(flow)
+                        val remoteIp = remember(flow.sourceIp, flow.destIp, ui.wifi?.ipAddress) {
+                            vm.remoteIpOf(flow.sourceIp, flow.destIp)
+                        }
+                        FlowCard(
+                            f = flow,
+                            remoteIp = remoteIp,
+                            lookup = ui.ipLookups[remoteIp],
+                            onLookup = { vm.lookupIp(remoteIp) },
+                            onClear = { vm.clearIpLookup(remoteIp) }
+                        )
                     }
                 }
             }
@@ -371,8 +408,9 @@ private fun DeviceCard(h: LanHost) {
         KeyValueRow("MAC", h.mac ?: "— (not in ARP yet)")
         KeyValueRow("Vendor", h.vendor ?: "—")
         KeyValueRow("Hostname", h.hostname ?: "—")
-        h.manufacturer?.let { KeyValueRow("Manufacturer", it) }
+        h.manufacturer?.let { KeyValueRow("Marcă", it) }
         h.modelName?.let { KeyValueRow("Model", it) }
+        h.userName?.let { KeyValueRow("Utilizator", it) }
         if (h.openPorts.isNotEmpty()) {
             KeyValueRow(
                 "Open services",
@@ -425,10 +463,16 @@ private fun PacketCard(p: CapturedPacket, expanded: Boolean, onClick: () -> Unit
         if (!finding.isEmpty) {
             Spacer(modifier = Modifier.height(4.dp))
             if (finding.emails.isNotEmpty()) {
-                Text("Email: ${finding.emails.joinToString(", ")}", color = AlertRed, fontSize = 11.sp)
+                Text("Email: ${finding.emails.joinToString(", ")}", color = AlertRed, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
             }
-            finding.hints.forEach { hint ->
-                Text("• $hint", color = AlertRed, fontSize = 11.sp)
+            finding.credentials.forEach { c ->
+                Text(
+                    "${c.label}: ${c.value}",
+                    color = AlertRed,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
         if (expanded) {
@@ -438,22 +482,55 @@ private fun PacketCard(p: CapturedPacket, expanded: Boolean, onClick: () -> Unit
             KeyValueRow("TTL", p.ttl?.toString() ?: "—")
             KeyValueRow("Flags", p.flags.ifBlank { "—" })
             KeyValueRow("Proto #", p.protocolNumber.toString())
+
+            val decoded = remember(p.payloadAscii) { PayloadDecoder.decodeAll(p.payloadAscii) }
+            if (finding.credentials.isNotEmpty() || decoded.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text("DECODAT (text simplu)", color = AlertRed, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                finding.credentials.forEach { c ->
+                    KeyValueRow(c.label, c.value)
+                }
+                decoded.forEach { d ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(d.label, color = MuteGreen, fontSize = 10.sp)
+                    Text(d.value, color = GhostWhite, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                }
+            }
+
             if (p.payloadAscii.isNotBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("ASCII", color = MuteGreen, fontSize = 10.sp)
+                Text("ASCII (brut)", color = MuteGreen, fontSize = 10.sp)
                 Text(p.payloadAscii, color = GhostWhite, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                val hexDec = remember(p.payloadAscii) { PayloadDecoder.urlDecode(p.payloadAscii) }
+                if (hexDec != p.payloadAscii) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("ASCII (URL-decodat)", color = MuteGreen, fontSize = 10.sp)
+                    Text(hexDec, color = GhostWhite, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                }
             }
             if (p.payloadHex.isNotBlank()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("HEX", color = MuteGreen, fontSize = 10.sp)
                 Text(p.payloadHex, color = TerminalGray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                val fromHex = remember(p.payloadHex) { PayloadDecoder.hexToAscii(p.payloadHex) }
+                if (fromHex != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("HEX → text", color = MuteGreen, fontSize = 10.sp)
+                    Text(fromHex, color = GhostWhite, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun FlowCard(f: TrafficFlow) {
+private fun FlowCard(
+    f: TrafficFlow,
+    remoteIp: String,
+    lookup: com.example.toolkit.ui.monitor.IpLookup?,
+    onLookup: () -> Unit,
+    onClear: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -473,6 +550,66 @@ private fun FlowCard(f: TrafficFlow) {
             color = TerminalGray,
             fontSize = 11.sp
         )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NexusButton(
+                text = when {
+                    lookup?.loading == true -> "Caut $remoteIp…"
+                    lookup?.info != null || lookup?.error != null -> "Reîncarcă $remoteIp"
+                    else -> "Cine e $remoteIp?"
+                },
+                onClick = onLookup,
+                enabled = lookup?.loading != true
+            )
+            if (lookup != null && lookup.loading != true) {
+                NexusButton("Ascunde", onClick = onClear)
+            }
+        }
+        lookup?.let { IpInfoView(it) }
+    }
+}
+
+@Composable
+private fun IpInfoView(lookup: com.example.toolkit.ui.monitor.IpLookup) {
+    val info = lookup.info
+    Spacer(modifier = Modifier.height(8.dp))
+    when {
+        lookup.loading -> Text("Interoghează geo + RDAP/WHOIS…", color = MuteGreen, fontSize = 12.sp)
+        info != null -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(VoidBlack.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
+                    .border(1.dp, NeonGreen.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                    .padding(10.dp)
+            ) {
+                Text("IP INTEL — ${info.ip}", color = NeonGreen, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                info.company?.let { KeyValueRow("Companie (WHOIS)", it) }
+                info.org?.let { KeyValueRow("Organizație", it) }
+                info.isp?.let { KeyValueRow("ISP", it) }
+                info.domain?.let { UrlLink(url = it, label = "Domeniu", showHint = false) }
+                info.asn?.let { KeyValueRow("ASN", listOfNotNull(it, info.asnOrg).joinToString(" · ")) }
+                info.netName?.let { KeyValueRow("Rețea", it) }
+                info.cidr?.let { KeyValueRow("Bloc IP", it) }
+                info.reverseDns?.let { UrlLink(url = it, label = "Reverse DNS", showHint = false) }
+                info.hostname?.let { UrlLink(url = it, label = "Hostname", showHint = false) }
+                val loc = listOfNotNull(info.city, info.region, info.country).joinToString(", ")
+                if (loc.isNotBlank()) KeyValueRow("Locație", loc)
+                info.continent?.let { KeyValueRow("Continent", it) }
+                info.timezone?.let { KeyValueRow("Fus orar", it) }
+                info.type?.let { KeyValueRow("Tip", it) }
+                info.abuseEmail?.let { KeyValueRow("Abuse", it) }
+                if (info.latitude != null && info.longitude != null) {
+                    KeyValueRow("Coordonate", "${info.latitude}, ${info.longitude}")
+                }
+                info.error?.let {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(it, color = MuteGreen, fontSize = 11.sp)
+                }
+            }
+        }
+        lookup.error != null -> Text(lookup.error, color = AlertRed, fontSize = 12.sp)
     }
 }
 

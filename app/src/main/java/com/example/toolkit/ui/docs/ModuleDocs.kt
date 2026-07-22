@@ -295,11 +295,14 @@ val moduleDocs: Map<String, ModuleDoc> = listOf(
     ),
     ModuleDoc(
         route = NexusRoute.WifiMonitor.route,
-        title = "Wi‑Fi Monitor",
-        tagline = "Dispozitive din rețeaua locală + traficul PROPRIU al acestui telefon",
-        overview = "Are două părți: (1) descoperirea dispozitivelor din rețeaua Wi‑Fi locală (IP, MAC, " +
-            "producător, nume, model) și (2) captarea și inspectarea traficului de rețea AL ACESTUI TELEFON, " +
-            "cu detectarea parolelor/emailurilor trimise necriptat.",
+        title = "Wi‑Fi/SIM Monitor",
+        tagline = "Dispozitive din rețea + SIM/celular + traficul PROPRIU al acestui telefon",
+        overview = "Are trei părți: (1) descoperirea dispozitivelor din rețeaua Wi‑Fi locală (IP, MAC, " +
+            "producător, nume, model — inclusiv marca/modelul real și utilizatorul acestui telefon), " +
+            "(2) informații despre SIM/celular (operator, stare SIM, tip rețea 2G–5G, roaming, număr dacă " +
+            "e permis) și (3) captarea și inspectarea traficului de rețea AL ACESTUI TELEFON, cu detectarea " +
+            "și DECODAREA în text simplu a parolelor/emailurilor/username-urilor/token-urilor trimise " +
+            "necriptat (URL/percent-decode, Base64 pentru Basic-Auth, hex → text).",
         howItWorks = listOf(
             "Descoperire dispozitive: scanare ping pe subrețea + scanare porturi comune, combinată cu " +
                 "identificare mDNS (NsdManager — protocolul Bonjour/Zeroconf), descoperire SSDP/UPnP " +
@@ -321,10 +324,14 @@ val moduleDocs: Map<String, ModuleDoc> = listOf(
                 "la doar cele care conțin acel email."
         ),
         usage = listOf(
-            "Tab \"DEVICES\": vezi dispozitivele din rețea, cu nume/producător/model când sunt disponibile.",
+            "Tab \"DEVICES\": vezi dispozitivele din rețea, cu nume/producător/model/utilizator când sunt disponibile.",
+            "Panoul \"SIM / CELULAR\": operator, stare SIM, tip rețea (2G–5G), roaming și număr (dacă e permis).",
             "Tab \"TRAFFIC\": pornește captarea (cere permisiune VPN Android), apoi filtrează după " +
-                "protocol sau după \"Credențiale\".",
-            "În filtrul Credențiale, atinge un email din listă pentru a vedea doar pachetele legate de el."
+                "protocol sau după \"Credențiale\". Deschide un pachet pentru secțiunea DECODAT (text simplu).",
+            "În filtrul Credențiale, atinge un email din listă pentru a vedea doar pachetele legate de el.",
+            "Tab \"FLOWS\" (Conexiuni): apasă \"Cine e <IP>?\" pe o conexiune ca să identifici IP-ul remote — " +
+                "companie/proprietar (RDAP/WHOIS), organizație/ISP, ASN, domeniu, bloc IP, reverse DNS, " +
+                "locație geografică, fus orar și email de abuse."
         ),
         limitations = listOf(
             "Traficul detaliat vizibil e DOAR al acestui telefon — nu poți citi pachetele altor " +
@@ -332,6 +339,33 @@ val moduleDocs: Map<String, ModuleDoc> = listOf(
                 "nu a aplicației.",
             "Detectarea numelor de dispozitive depinde de ce expun ele prin mDNS/SSDP/MAC — unele " +
                 "dispozitive moderne folosesc adrese MAC randomizate și pot rămâne fără nume identificabil."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Mitm.route,
+        title = "MITM / Proxy Capture",
+        tagline = "Decrypt HTTPS on THIS phone — request/response with host filter",
+        overview = "Local HTTP(S) man-in-the-middle for authorized testing on this device. " +
+            "Generates a NEXUS root CA (user-installable), runs a MITM proxy on port 8888, and " +
+            "optionally a VPN that transparently intercepts ports 80/443. Shows full request and " +
+            "response (headers + body) with host/path filtering.",
+        howItWorks = listOf(
+            "CA: RSA-2048 root stored in app private storage; host certs minted on demand (SNI) and signed by the CA.",
+            "Proxy mode: listens on 0.0.0.0:8888. Set Wi‑Fi proxy to PHONE_IP:8888. CONNECT is MITM'd for HTTPS.",
+            "VPN mode: VpnService routes this phone's traffic; ports 80/8080/443/8443 go through TLS/HTTP MITM.",
+            "Captured exchanges keep method, URL, headers, bodies (capped), status, latency, and via=proxy|vpn."
+        ),
+        usage = listOf(
+            "Tap Install / share CA → install as a *user* CA certificate (not system, unless rooted).",
+            "Start Proxy → set Wi‑Fi → Proxy → Manual → shown IP:8888 — best for browsers that honor system proxy.",
+            "Or Start VPN MITM → approve Android VPN permission — captures this phone without Wi‑Fi proxy.",
+            "Filter by host (e.g. api.target.com); tap an exchange for full request/response."
+        ),
+        limitations = listOf(
+            "Certificate pinning / TrustKit / network-security-config that rejects user CAs will fail or show errors.",
+            "Only this phone's traffic — not other LAN devices.",
+            "WebSockets / HTTP2 cleartext upgrade / QUIC (HTTP/3) are not fully supported.",
+            "Large bodies are truncated in the UI preview."
         )
     ),
     ModuleDoc(

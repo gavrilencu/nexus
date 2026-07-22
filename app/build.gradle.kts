@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.toolkit"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 5
+        versionName = "1.0.20"
         // Prefer 64-bit ABIs that require 16 KB ELF alignment on Android 15+.
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
@@ -61,6 +61,8 @@ dependencies {
     implementation(libs.commons.compress)
     implementation("androidx.documentfile:documentfile:1.0.1")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
     // Force 16 KB–aligned graphics-path (Compose may pull an older transitive build).
     implementation("androidx.graphics:graphics-path:1.1.0")
 

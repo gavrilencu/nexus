@@ -26,6 +26,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.crtsh.CrtShViewModel
 import com.example.toolkit.ui.theme.AlertRed
 import com.example.toolkit.ui.theme.GhostWhite
@@ -64,10 +65,10 @@ fun CrtShScreen(vm: CrtShViewModel = viewModel()) {
             Spacer(modifier = Modifier.height(12.dp))
             NexusPanel(title = "Subdomains") {
                 if (res.subdomains.isEmpty()) Text("None found in CT logs.", color = TerminalGray)
-                SelectionContainer {
-                    Column {
-                        res.subdomains.forEach { SubRow(it) }
-                    }
+                else {
+                    Text("tap open · hold copy", color = MuteGreen)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    res.subdomains.forEach { SubRow(it) }
                 }
             }
         }
@@ -78,7 +79,9 @@ fun CrtShScreen(vm: CrtShViewModel = viewModel()) {
 @Composable
 private fun SubRow(e: CrtEntry) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(e.name, color = GhostWhite, fontWeight = FontWeight.SemiBold)
+        // crt.sh names can be wildcards (*.example.com) — strip leading *.
+        val host = e.name.removePrefix("*.")
+        UrlLink(url = host, showHint = false)
         val meta = buildString {
             e.lastSeen?.let { append("since $it") }
             if (e.issuers.isNotEmpty()) { if (isNotEmpty()) append("  ·  "); append(e.issuers.joinToString(", ")) }

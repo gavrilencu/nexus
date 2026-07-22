@@ -28,6 +28,7 @@ import com.example.toolkit.ui.components.NexusPanel
 import com.example.toolkit.ui.components.NexusTextField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.exposed.ExposedViewModel
 import com.example.toolkit.ui.theme.AlertAmber
 import com.example.toolkit.ui.theme.AlertRed
@@ -91,7 +92,7 @@ private fun HitCard(h: ExposedHit) {
         SelectionContainer {
             Text(h.path, color = GhostWhite, fontWeight = FontWeight.SemiBold)
         }
-        Text(h.url, color = TerminalGray, style = MaterialTheme.typography.bodySmall)
+        UrlLink(url = h.url, showHint = true)
         Spacer(modifier = Modifier.height(4.dp))
         Text(h.note, color = if (h.severity == "HIGH") color else GhostWhite)
     }

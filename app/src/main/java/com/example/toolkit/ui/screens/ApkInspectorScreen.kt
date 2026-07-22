@@ -45,7 +45,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,6 +70,7 @@ import com.example.toolkit.ui.components.NexusButton
 import com.example.toolkit.ui.components.NexusSearchField
 import com.example.toolkit.ui.components.ScreenHeader
 import com.example.toolkit.ui.components.StatusChip
+import com.example.toolkit.ui.components.UrlLink
 import com.example.toolkit.ui.theme.AccentGradient
 import com.example.toolkit.ui.theme.AlertAmber
 import com.example.toolkit.ui.theme.AlertRed
@@ -316,16 +319,15 @@ private fun ReportView(report: ApkReport, vm: ApkInspectorViewModel) {
             )
         }
 
-        val findings = report.urls.size + report.ips.size + report.emails.size + report.secrets.size
-        Section("Strings: URLs / IPs / emails / secrets ($findings)", "strings --grep", isOpen("sec", false), { toggle("sec", false) }) {
-            if (report.secrets.isNotEmpty()) {
-                Label("Potential secrets (${report.secrets.size})")
-                SelectionContainer { Column { report.secrets.forEach { Mono("[${it.type}] ${it.value}", AlertRed) } } }
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-            StringGroup("URLs", report.urls)
-            StringGroup("IP addresses", report.ips)
-            StringGroup("Emails", report.emails)
+        val findings = report.urls.size + report.ips.size + report.emails.size +
+            report.secrets.size + report.keywords.size + report.apiPaths.size
+        Section(
+            "Search: links / passwords / APIs / emails / tokens ($findings)",
+            "strings --grep",
+            isOpen("sec", true),
+            { toggle("sec", true) }
+        ) {
+            StringsSearchPanel(report)
         }
 
         Section("File types (${report.fileTypes.size})", "ls --by-type", isOpen("ft", false), { toggle("ft", false) }) {
@@ -474,11 +476,153 @@ private fun ComponentGroup(title: String, items: List<ComponentInfo>) {
 }
 
 @Composable
-private fun StringGroup(title: String, items: List<String>) {
-    Label("$title (${items.size})")
-    if (items.isEmpty()) { Text("none", color = TerminalGray, fontSize = 11.sp); Spacer(modifier = Modifier.height(8.dp)); return }
-    SelectionContainer { Column { items.forEach { Mono(it, TerminalGray) } } }
+private fun StringsSearchPanel(report: ApkReport) {
+    var query by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf("ALL") }
+    val q = query.trim()
+
+    fun match(text: String): Boolean = q.isBlank() || text.contains(q, ignoreCase = true)
+
+    val urls = remember(report.urls, q, filter) {
+        if (filter != "ALL" && filter != "LINKS" && filter != "HTTP") emptyList()
+        else report.urls.filter {
+            match(it) && (filter != "HTTP" || it.startsWith("http://", true) || it.startsWith("https://", true))
+        }
+    }
+    val emails = remember(report.emails, q, filter) {
+        if (filter != "ALL" && filter != "EMAILS") emptyList() else report.emails.filter(::match)
+    }
+    val ips = remember(report.ips, q, filter) {
+        if (filter != "ALL" && filter != "IPS") emptyList() else report.ips.filter(::match)
+    }
+    val secrets = remember(report.secrets, q, filter) {
+        when (filter) {
+            "ALL" -> report.secrets.filter { match(it.type) || match(it.value) }
+            "PASSWORDS" -> report.secrets.filter {
+                it.type.contains("Password", true) && (match(it.type) || match(it.value))
+            }
+            "APIKEYS" -> report.secrets.filter {
+                (it.type.contains("API", true) || it.type.contains("key", true) ||
+                    it.type.contains("Stripe", true) || it.type.contains("Google", true) ||
+                    it.type.contains("AWS", true) || it.type.contains("GitHub", true)) &&
+                    (match(it.type) || match(it.value))
+            }
+            "TOKENS" -> report.secrets.filter {
+                (it.type.contains("token", true) || it.type.contains("JWT", true) ||
+                    it.type.contains("Bearer", true) || it.type.contains("Auth", true) ||
+                    it.type.contains("Slack", true)) && (match(it.type) || match(it.value))
+            }
+            else -> emptyList()
+        }
+    }
+    val keywords = remember(report.keywords, q, filter) {
+        when (filter) {
+            "ALL" -> report.keywords.filter { match(it.category) || match(it.value) }
+            "PASSWORDS" -> report.keywords.filter { it.category == "password" && (match(it.category) || match(it.value)) }
+            "APIKEYS" -> report.keywords.filter { it.category == "apikey" && (match(it.category) || match(it.value)) }
+            "TOKENS" -> report.keywords.filter {
+                it.category in setOf("token", "auth", "secret") && (match(it.category) || match(it.value))
+            }
+            "HTTP", "LINKS" -> report.keywords.filter {
+                it.category == "api" && (match(it.category) || match(it.value))
+            }
+            "CREDS" -> report.keywords.filter {
+                it.category in setOf("credential", "password") && (match(it.category) || match(it.value))
+            }
+            else -> emptyList()
+        }
+    }
+    val apiPaths = remember(report.apiPaths, q, filter) {
+        if (filter != "ALL" && filter != "APIS" && filter != "HTTP" && filter != "LINKS") emptyList()
+        else report.apiPaths.filter(::match)
+    }
+
+    val shown = urls.size + emails.size + ips.size + secrets.size + keywords.size + apiPaths.size
+
+    NexusSearchField(
+        value = query,
+        onValueChange = { query = it },
+        placeholder = "search password, api, email, token, https…"
+    )
     Spacer(modifier = Modifier.height(8.dp))
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        listOf(
+            "ALL" to "All",
+            "LINKS" to "Links (${report.urls.size})",
+            "HTTP" to "HTTP/S",
+            "APIS" to "API paths (${report.apiPaths.size})",
+            "EMAILS" to "Emails (${report.emails.size})",
+            "PASSWORDS" to "Passwords",
+            "APIKEYS" to "API keys",
+            "TOKENS" to "Tokens",
+            "IPS" to "IPs (${report.ips.size})",
+            "CREDS" to "Creds"
+        ).forEach { (id, label) ->
+            StatusChip(
+                text = label,
+                color = if (filter == id) NeonGreen else MuteGreen,
+                onClick = { filter = id }
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(6.dp))
+    Text("$shown matches", color = MuteGreen, style = MaterialTheme.typography.bodySmall)
+    Spacer(modifier = Modifier.height(10.dp))
+
+    if (shown == 0) {
+        Text(
+            if (q.isBlank()) "No findings in this category." else "No matches for \"$q\".",
+            color = TerminalGray
+        )
+        return
+    }
+
+    if (secrets.isNotEmpty()) {
+        Label("Secrets / credentials (${secrets.size})")
+        SelectionContainer {
+            Column {
+                secrets.forEach { Mono("[${it.type}] ${it.value}", AlertRed) }
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+    }
+    if (urls.isNotEmpty()) {
+        Label("Links / URLs (${urls.size}) — tap open · hold copy")
+        urls.forEach { UrlLink(url = it, showHint = false, maxLines = 2) }
+        Spacer(modifier = Modifier.height(10.dp))
+    }
+    if (apiPaths.isNotEmpty()) {
+        Label("API paths (${apiPaths.size})")
+        SelectionContainer {
+            Column { apiPaths.forEach { Mono(it, SoftGreen) } }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+    }
+    if (emails.isNotEmpty()) {
+        Label("Emails (${emails.size})")
+        SelectionContainer {
+            Column { emails.forEach { Mono(it, AlertAmber) } }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+    }
+    if (ips.isNotEmpty()) {
+        Label("IP addresses (${ips.size})")
+        SelectionContainer {
+            Column { ips.forEach { Mono(it, TerminalGray) } }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+    }
+    if (keywords.isNotEmpty()) {
+        Label("Keyword hits (${keywords.size})")
+        SelectionContainer {
+            Column {
+                keywords.forEach { Mono("[${it.category}] ${it.value}", GhostWhite) }
+            }
+        }
+    }
 }
 
 @Composable

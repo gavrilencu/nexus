@@ -2,11 +2,22 @@ package com.example.toolkit.data.capture
 
 import android.util.Base64
 
+/** One decoded credential/value pulled out of a payload, in clear text. */
+data class Credential(
+    val label: String,   // e.g. "password", "email", "Basic Auth user"
+    val value: String,   // decoded, human-readable value
+    val sensitive: Boolean = false
+)
+
 data class CredentialFinding(
     val emails: List<String>,
-    val hints: List<String>
+    val credentials: List<Credential>
 ) {
-    val isEmpty: Boolean get() = emails.isEmpty() && hints.isEmpty()
+    val isEmpty: Boolean get() = emails.isEmpty() && credentials.isEmpty()
+
+    /** Flat, human-readable lines (values are shown IN CLEAR, not masked). */
+    val hints: List<String>
+        get() = credentials.map { "${it.label} = ${it.value}" }
 }
 
 /**
@@ -14,11 +25,9 @@ data class CredentialFinding(
  * looking for plaintext emails/usernames/passwords/tokens — i.e. things a
  * misconfigured app or an unencrypted (HTTP, not HTTPS) request might leak.
  *
- * Scope: this only ever sees payloads NEXUS already captured for *this
- * phone's own* traffic via the local VpnService — Android gives no way to
- * see other devices' packets without root/monitor-mode Wi‑Fi, which regular
- * phones don't support. This is a personal traffic-leak auditor, not a
- * network sniffer for other people's data.
+ * Values are decoded (URL/percent-decoded, Base64 for Basic-Auth) and shown
+ * IN CLEAR — this is a personal traffic-leak auditor for your own traffic, so
+ * you can actually read what your apps are sending.
  */
 object CredentialSniffer {
 
@@ -27,72 +36,72 @@ object CredentialSniffer {
     )
 
     private val formFieldRegex = Regex(
-        "(?i)(?:^|[&?\\s])(pass(?:word)?|pwd|passwd|user(?:name)?|login|email|token|apikey|api_key|secret)=([^&\\s\"'<>]{1,80})"
+        "(?i)(?:^|[&?\\s])(pass(?:word)?|pwd|passwd|user(?:name)?|login|email|e-mail|mail|token|apikey|api_key|secret|otp|pin|auth)=([^&\\s\"'<>]{1,120})"
     )
 
     private val jsonFieldRegex = Regex(
-        "(?i)\"(pass(?:word)?|pwd|username|user|email|login|token|secret|apikey)\"\\s*:\\s*\"([^\"]{1,80})\""
+        "(?i)\"(pass(?:word)?|pwd|username|user|email|e-mail|mail|login|token|secret|apikey|api_key|otp|pin|phone|mobile)\"\\s*:\\s*\"([^\"]{1,120})\""
     )
 
     private val basicAuthRegex = Regex("(?i)Authorization:\\s*Basic\\s+([A-Za-z0-9+/=]+)")
     private val bearerAuthRegex = Regex("(?i)Authorization:\\s*Bearer\\s+([A-Za-z0-9._-]{8,})")
-    private val cookieAuthRegex = Regex("(?i)(?:Cookie|Set-Cookie):[^\\r\\n]*?(sess[a-z]*|auth|token)=([^;\\r\\n]{1,40})")
+    private val cookieAuthRegex = Regex("(?i)(?:Cookie|Set-Cookie):[^\\r\\n]*?(sess[a-z]*|auth|token|jwt|sid)=([^;\\r\\n]{1,120})")
 
     fun find(payloadAscii: String): CredentialFinding {
         if (payloadAscii.isBlank()) return CredentialFinding(emptyList(), emptyList())
 
-        val emails = emailRegex.findAll(payloadAscii).map { it.value }.distinct().toList()
-        val hints = mutableListOf<String>()
+        // Percent-encoding hides '@' and other chars, which is exactly why
+        // emails/values looked "wrong" before — decode first, then scan.
+        val decoded = PayloadDecoder.urlDecode(payloadAscii)
 
-        formFieldRegex.findAll(payloadAscii).forEach { m ->
+        val emails = (emailRegex.findAll(decoded).map { it.value } +
+            emailRegex.findAll(payloadAscii).map { it.value })
+            .distinct()
+            .toList()
+
+        val creds = mutableListOf<Credential>()
+
+        formFieldRegex.findAll(decoded).forEach { m ->
             val field = m.groupValues[1].lowercase()
-            val value = m.groupValues[2]
-            hints += if (field.contains("pass") || field.contains("pwd")) {
-                "Form field \"$field\" = ${mask(value)}"
-            } else {
-                "Form field \"$field\" = $value"
-            }
+            val value = PayloadDecoder.urlDecode(m.groupValues[2])
+            creds += Credential("form: $field", value, isSensitive(field))
         }
 
-        jsonFieldRegex.findAll(payloadAscii).forEach { m ->
+        jsonFieldRegex.findAll(decoded).forEach { m ->
             val field = m.groupValues[1].lowercase()
             val value = m.groupValues[2]
-            hints += if (field.contains("pass") || field.contains("secret") || field.contains("token")) {
-                "JSON field \"$field\" = ${mask(value)}"
-            } else {
-                "JSON field \"$field\" = $value"
-            }
+            creds += Credential("json: $field", value, isSensitive(field))
         }
 
         basicAuthRegex.find(payloadAscii)?.let { m ->
-            val decoded = runCatching {
+            val clear = runCatching {
                 String(Base64.decode(m.groupValues[1], Base64.DEFAULT), Charsets.UTF_8)
             }.getOrNull()
-            hints += if (decoded != null && decoded.contains(':')) {
-                val (user, pass) = decoded.split(':', limit = 2)
-                "HTTP Basic Auth — user \"$user\", password ${mask(pass)}"
+            if (clear != null && clear.contains(':')) {
+                val user = clear.substringBefore(':')
+                val pass = clear.substringAfter(':')
+                creds += Credential("Basic Auth user", user)
+                creds += Credential("Basic Auth password", pass, sensitive = true)
             } else {
-                "HTTP Basic Auth header (base64 login)"
+                creds += Credential("Basic Auth (Base64)", m.groupValues[1], sensitive = true)
             }
         }
 
         bearerAuthRegex.find(payloadAscii)?.let {
-            hints += "HTTP Bearer token = ${mask(it.groupValues[1])}"
+            creds += Credential("Bearer token", it.groupValues[1], sensitive = true)
         }
 
         cookieAuthRegex.find(payloadAscii)?.let { m ->
-            hints += "Session cookie \"${m.groupValues[1]}\" = ${mask(m.groupValues[2])}"
+            creds += Credential("cookie: ${m.groupValues[1]}", m.groupValues[2], sensitive = true)
         }
 
-        return CredentialFinding(emails, hints.distinct())
+        return CredentialFinding(emails.distinct(), creds.distinctBy { it.label + it.value })
     }
 
-    fun hasFinding(payloadAscii: String): Boolean {
-        val f = find(payloadAscii)
-        return !f.isEmpty
-    }
+    fun hasFinding(payloadAscii: String): Boolean = !find(payloadAscii).isEmpty
 
-    private fun mask(value: String): String =
-        if (value.length <= 4) "•".repeat(value.length)
-        else value.take(2) + "•".repeat((value.length - 4).coerceAtMost(10)) + value.takeLast(2)
+    private fun isSensitive(field: String): Boolean =
+        field.contains("pass") || field.contains("pwd") || field.contains("secret") ||
+            field.contains("token") || field.contains("apikey") || field.contains("api_key") ||
+            field.contains("otp") || field.contains("pin") || field.contains("auth")
 }
