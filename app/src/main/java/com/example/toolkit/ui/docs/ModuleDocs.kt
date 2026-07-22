@@ -373,5 +373,157 @@ val moduleDocs: Map<String, ModuleDoc> = listOf(
             "Rularea în fundal necesită permisiunea de notificări (Android 13+) pentru afișarea notificării " +
                 "obligatorii a Foreground Service-ului."
         )
+    ),
+    ModuleDoc(
+        route = NexusRoute.DirScan.route,
+        title = "Content Discovery",
+        tagline = "Brute-force de directoare și fișiere pe un site (stil dirb / gobuster / ffuf)",
+        overview = "Testează o listă de căi comune (admin, login, .env, .git/HEAD, backup.zip, api, actuator " +
+            "etc.) împotriva unui site și păstrează doar căile care par să existe cu adevărat, cu status live.",
+        howItWorks = listOf(
+            "Pentru fiecare intrare din wordlist se face o cerere GET către base_url + cale, cu concurență " +
+                "controlată printr-un semafor.",
+            "Redirect-urile NU sunt urmărite, așa că un 301/302 către un login rămâne vizibil (semn util).",
+            "Rezultatele sunt filtrate: 404 este ignorat, iar codurile interesante (200, 301/302, 401, 403, " +
+                "500 etc.) sunt raportate cu status, dimensiune și eventual header-ul Location.",
+            "Detectare soft-404: înainte de scanare se cere o cale aleatoare inexistentă; dacă serverul " +
+                "răspunde tot cu 200, rezultatele 200 cu aceeași dimensiune sunt considerate false și filtrate."
+        ),
+        usage = listOf(
+            "Introdu URL-ul de bază (ex: https://target.com) și apasă Start scan.",
+            "Urmărește bara de progres și lista de căi găsite, colorată după codul de status.",
+            "Apasă Stop pentru a opri scanarea în orice moment."
+        ),
+        limitations = listOf(
+            "Folosește doar pe site-uri pe care ai autorizație scrisă să le testezi.",
+            "Wordlist-ul e unul compact, comun — nu înlocuiește liste mari dedicate (ex: SecLists)."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Fingerprint.route,
+        title = "Web Fingerprint",
+        tagline = "Detectează stack-ul unui site: server, limbaj, framework, CMS, CDN/WAF, biblioteci JS",
+        overview = "Descarcă pagina o singură dată și deduce tehnologiile folosite din headerele răspunsului, " +
+            "numele cookie-urilor (Set-Cookie) și markeri din HTML — similar cu WhatWeb / Wappalyzer.",
+        howItWorks = listOf(
+            "Analizează headere precum Server și X-Powered-By pentru server web și limbaj.",
+            "Recunoaște cookie-uri caracteristice: PHPSESSID → PHP, JSESSIONID → Java, laravel_session → " +
+                "Laravel, csrftoken → Django, connect.sid → Node/Express etc.",
+            "Caută markeri în HTML: /wp-content/ → WordPress, __NEXT_DATA__ → Next.js, ng-version → Angular, " +
+                "data-reactroot → React, cdn.shopify.com → Shopify și multe altele.",
+            "Identifică CDN/WAF din headere: cf-ray → Cloudflare, x-amz-cf-id → CloudFront, x-akamai → Akamai, " +
+                "x-sucuri-id → Sucuri.",
+            "Afișează și un rezumat al headerelor de securitate (HSTS, CSP, X-Frame-Options etc.)."
+        ),
+        usage = listOf(
+            "Introdu un domeniu sau URL și apasă Fingerprint.",
+            "Vezi tehnologiile detectate (cu categoria și dovada), cookie-urile și headerele de securitate."
+        ),
+        limitations = listOf(
+            "Detectare pasivă, pe baza semnăturilor cunoscute — poate rata tehnologii ascunse în spatele unui " +
+                "CDN/WAF sau ofuscate.",
+            "Nu trimite payload-uri și nu exploatează nimic — doar citește răspunsul public al paginii."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Whois.route,
+        title = "WHOIS / RDAP",
+        tagline = "Date de înregistrare pentru domenii și adrese IP, prin protocolul RDAP (JSON peste HTTPS)",
+        overview = "Interoghează informațiile de înregistrare ale unui domeniu sau ale unei adrese IP folosind " +
+            "RDAP — succesorul modern, structurat (JSON), al vechiului WHOIS pe portul 43.",
+        howItWorks = listOf(
+            "Detectează automat dacă inputul e un IP (IPv4/IPv6) sau un domeniu.",
+            "Trimite o cerere la rdap.org, care redirecționează („bootstrap”) automat către registrul/RIR-ul " +
+                "autoritar potrivit (registrar de domeniu sau RIPE/ARIN/APNIC pentru IP).",
+            "Pentru domenii extrage: handle, status-uri, cronologia evenimentelor (înregistrare, expirare, " +
+                "ultima modificare), name-serverele, entitățile (ex: registrar) și starea DNSSEC.",
+            "Pentru IP-uri extrage: handle, nume, intervalul de adrese, țara și organizația.",
+            "Numele entităților sunt extrase din structura jCard/vcardArray din răspunsul RDAP."
+        ),
+        usage = listOf(
+            "Introdu un domeniu (ex: example.com) sau un IP și apasă Lookup.",
+            "Rezultatele apar pe secțiuni: identitate, status, cronologie, entități, name-servere."
+        ),
+        limitations = listOf(
+            "Unele TLD-uri vechi nu au încă RDAP, sau ascund datele de contact din motive de confidențialitate " +
+                "(GDPR) — atunci vei vedea mai puține câmpuri."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Cors.route,
+        title = "CORS Scanner",
+        tagline = "Detectează configurări greșite de CORS care permit furt de date cross-origin",
+        overview = "Trimite mai multe headere Origin construite special și analizează răspunsul " +
+            "(Access-Control-Allow-Origin și Access-Control-Allow-Credentials) pentru a găsi slăbiciuni " +
+            "clasice de CORS.",
+        howItWorks = listOf(
+            "Reflectare origine arbitrară: trimite o origine atacator; dacă serverul o reflectă în ACAO, " +
+                "orice site poate citi răspunsul.",
+            "Origine null: dacă serverul acceptă Origin: null, poate fi exploatat din iframe-uri sandbox.",
+            "Bypass prefix/sufix: testează origini de tip target.com.evil.com sau evil-target.com pentru a " +
+                "prinde verificări slabe (bazate pe „conține”).",
+            "Fiecare test primește o severitate: HIGH dacă reflectă originea ȘI ACAC=true (date autentificate " +
+                "expuse), MEDIUM fără credentials, INFO pentru ACAO=* (API public), OK dacă nu e vulnerabil."
+        ),
+        usage = listOf(
+            "Introdu URL-ul endpoint-ului (ideal un API care întoarce date) și apasă Scan CORS.",
+            "Verifică fiecare test: originea trimisă, ACAO/ACAC primite și verdictul cu severitate."
+        ),
+        limitations = listOf(
+            "Testează doar aplicații pe care ai autorizație să le verifici.",
+            "Verifică o singură cerere GET simplă per origine — nu simulează preflight-uri complexe cu headere " +
+                "custom."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.HttpMethods.route,
+        title = "HTTP Methods",
+        tagline = "Ce verbe HTTP acceptă serverul și care sunt periculoase (PUT/DELETE/TRACE)",
+        overview = "Testează fiecare metodă HTTP (GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD, TRACE) împotriva " +
+            "unui URL și raportează care par acceptate, semnalând verbele periculoase lăsate active.",
+        howItWorks = listOf(
+            "Trimite o cerere pentru fiecare metodă și interpretează codul de status: 405/501 (și 400) înseamnă " +
+                "„nepermis”, restul înseamnă că metoda e tratată de server.",
+            "Citește header-ul Allow din răspunsul la OPTIONS, care listează metodele declarate de server.",
+            "Marchează ca periculoase metodele PUT/DELETE/PATCH/TRACE care par active (pot permite modificarea " +
+                "resurselor sau atacuri Cross-Site Tracing).",
+            "Redirect-urile nu sunt urmărite, ca statusul real al fiecărei metode să rămână vizibil."
+        ),
+        usage = listOf(
+            "Introdu un URL și apasă Test methods.",
+            "Vezi fiecare metodă cu status-ul ei; verbele periculoase active sunt evidențiate cu DANGER."
+        ),
+        limitations = listOf(
+            "Un status „acceptat” nu garantează exploatabilitate — confirmă manual dacă metoda chiar modifică " +
+                "resurse înainte de a trage concluzii.",
+            "Metoda CONNECT nu e testată (nesuportată de clientul HTTP)."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.HashCrack.route,
+        title = "Hash Cracker",
+        tagline = "Identifică tipul unui hash și încearcă spargerea lui cu un dicționar, complet local",
+        overview = "Ghicește algoritmul unui hash după lungime/format și apoi încearcă un atac de dicționar " +
+            "(dictionary attack) recalculând hash-ul fiecărei parole comune și comparând — totul pe telefon, " +
+            "fără rețea.",
+        howItWorks = listOf(
+            "Identificare: după lungimea în hex (32→MD5, 40→SHA-1, 64→SHA-256, 128→SHA-512 etc.) și după " +
+                "prefixe speciale (\$2y\$→bcrypt, \$6\$→SHA-512-crypt, \$argon2→Argon2).",
+            "Dictionary attack: pentru hash-uri hex simple, recalculează hash-ul fiecărui candidat dintr-o " +
+                "listă încorporată de parole comune (stil rockyou) și compară cu ținta.",
+            "Poți adăuga cuvinte proprii (separate prin virgulă, spațiu sau linie nouă) care se adaugă la " +
+                "începutul dicționarului.",
+            "Doar algoritmii cu lungimea potrivită sunt încercați, pentru viteză; dacă lungimea e necunoscută, " +
+                "se încearcă MD5/SHA-1/SHA-256/SHA-512."
+        ),
+        usage = listOf(
+            "Lipește un hash și, opțional, cuvinte extra pentru dicționar.",
+            "Apasă Identify & crack: vezi tipul probabil de hash și, dacă e găsit, parola în clar."
+        ),
+        limitations = listOf(
+            "bcrypt / Argon2 / hash-urile cu sare NU pot fi sparte aici — sunt doar identificate.",
+            "Dicționarul încorporat e mic (parole foarte comune) — un hash cu parolă puternică nu va fi găsit.",
+            "Sparge doar hash-uri pe care ai dreptul legal să le testezi."
+        )
     )
 ).associateBy { it.route }

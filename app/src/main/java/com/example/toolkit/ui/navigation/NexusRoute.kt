@@ -17,12 +17,19 @@ sealed class NexusRoute(val route: String, val title: String) {
     data object Hibp : NexusRoute("hibp", "HIBP")
     data object WifiMonitor : NexusRoute("wifi_monitor", "Wi‑Fi Capture")
     data object LinuxTerminal : NexusRoute("linux_terminal", "Linux Terminal")
+    data object DirScan : NexusRoute("dirscan", "Content Discovery")
+    data object Fingerprint : NexusRoute("fingerprint", "Web Fingerprint")
+    data object Whois : NexusRoute("whois", "WHOIS / RDAP")
+    data object Cors : NexusRoute("cors", "CORS Scanner")
+    data object HttpMethods : NexusRoute("httpmethods", "HTTP Methods")
+    data object HashCrack : NexusRoute("hashcrack", "Hash Cracker")
 
     companion object {
         val modules = listOf(
             Recon, Ports, Traffic, Osint, Api,
             Hash, Dns, Subdomain, Jwt, Cve, Ip,
-            Person, Hibp, WifiMonitor, LinuxTerminal
+            Person, Hibp, WifiMonitor, LinuxTerminal,
+            DirScan, Fingerprint, Whois, Cors, HttpMethods, HashCrack
         )
     }
 }

@@ -62,11 +62,16 @@ import com.example.toolkit.ui.navigation.NexusRoute
 import com.example.toolkit.ui.navigation.nexusCategories
 import com.example.toolkit.ui.navigation.nexusModules
 import com.example.toolkit.ui.screens.ApiScreen
+import com.example.toolkit.ui.screens.CorsScreen
 import com.example.toolkit.ui.screens.CveScreen
 import com.example.toolkit.ui.screens.DashboardScreen
+import com.example.toolkit.ui.screens.DirScanScreen
 import com.example.toolkit.ui.screens.DnsScreen
+import com.example.toolkit.ui.screens.FingerprintScreen
+import com.example.toolkit.ui.screens.HashCrackScreen
 import com.example.toolkit.ui.screens.HashScreen
 import com.example.toolkit.ui.screens.HibpScreen
+import com.example.toolkit.ui.screens.HttpMethodsScreen
 import com.example.toolkit.ui.screens.IpToolsScreen
 import com.example.toolkit.ui.screens.JwtScreen
 import com.example.toolkit.ui.screens.LinuxTerminalScreen
@@ -77,6 +82,7 @@ import com.example.toolkit.ui.screens.PortScanScreen
 import com.example.toolkit.ui.screens.ReconScreen
 import com.example.toolkit.ui.screens.SubdomainScreen
 import com.example.toolkit.ui.screens.TrafficScreen
+import com.example.toolkit.ui.screens.WhoisScreen
 import com.example.toolkit.ui.theme.AccentGradient
 import com.example.toolkit.ui.theme.AccentSoft
 import com.example.toolkit.ui.theme.AlertAmber
@@ -127,6 +133,12 @@ fun NexusApp() {
         NexusRoute.Hibp.route -> "Have I Been Pwned"
         NexusRoute.WifiMonitor.route -> "Wi-Fi Monitor"
         NexusRoute.LinuxTerminal.route -> "Linux Terminal"
+        NexusRoute.DirScan.route -> "Content Discovery"
+        NexusRoute.Fingerprint.route -> "Web Fingerprint"
+        NexusRoute.Whois.route -> "WHOIS / RDAP"
+        NexusRoute.Cors.route -> "CORS Scanner"
+        NexusRoute.HttpMethods.route -> "HTTP Methods"
+        NexusRoute.HashCrack.route -> "Hash Cracker"
         else -> "NEXUS"
     }
 
@@ -232,6 +244,12 @@ fun NexusApp() {
                 composable(NexusRoute.Hibp.route) { HibpScreen() }
                 composable(NexusRoute.WifiMonitor.route) { NetworkMonitorScreen() }
                 composable(NexusRoute.LinuxTerminal.route) { LinuxTerminalScreen() }
+                composable(NexusRoute.DirScan.route) { DirScanScreen() }
+                composable(NexusRoute.Fingerprint.route) { FingerprintScreen() }
+                composable(NexusRoute.Whois.route) { WhoisScreen() }
+                composable(NexusRoute.Cors.route) { CorsScreen() }
+                composable(NexusRoute.HttpMethods.route) { HttpMethodsScreen() }
+                composable(NexusRoute.HashCrack.route) { HashCrackScreen() }
             }
         }
     }
