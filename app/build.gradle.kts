@@ -59,6 +59,8 @@ dependencies {
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.commons.compress)
+    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
     // Force 16 KB–aligned graphics-path (Compose may pull an older transitive build).
     implementation("androidx.graphics:graphics-path:1.1.0")
 

@@ -209,7 +209,7 @@ fun NexusButton(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
-                        color = Color.White,
+                        color = Color.Black,
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -217,8 +217,8 @@ fun NexusButton(
             }
             Text(
                 text,
-                color = if (isActive) Color.White else MuteGreen,
-                fontWeight = FontWeight.SemiBold
+                color = if (isActive) Color.Black else MuteGreen,
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -293,7 +293,7 @@ fun ModuleCard(
                     .background(AccentGradient),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = Color.White)
+                Icon(icon, contentDescription = null, tint = Color.Black)
             }
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {

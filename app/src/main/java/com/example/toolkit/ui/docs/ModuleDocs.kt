@@ -525,5 +525,406 @@ val moduleDocs: Map<String, ModuleDoc> = listOf(
             "Dicționarul încorporat e mic (parole foarte comune) — un hash cu parolă puternică nu va fi găsit.",
             "Sparge doar hash-uri pe care ai dreptul legal să le testezi."
         )
+    ),
+    ModuleDoc(
+        route = NexusRoute.ApkInspector.route,
+        title = "APK Inspector",
+        tagline = "Analiză statică și reverse engineering pentru pachete Android (APK/AAB/XAPK/APKS)",
+        overview = "Alegi un fișier de aplicație din Download sau de oriunde (nu trebuie instalat) — sau o " +
+            "aplicație deja instalată — și NEXUS îți spune tot ce poate citi despre ea: identitate, semnătură, " +
+            "permisiuni, componente, biblioteci native, în ce limbaj/framework a fost dezvoltată, statistici " +
+            "DEX + estimare de ofuscare, plus URL-uri și posibile secrete/chei găsite în cod. Poate și " +
+            "dezarhiva complet pachetul.",
+        howItWorks = listOf(
+            "Fișierele APK/AAB/XAPK/APKS/APKM sunt arhive ZIP: motorul le deschide, iar pentru bundle-uri " +
+                "(XAPK/APKS/APKM) extrage automat APK-ul de bază înainte de analiză.",
+            "Manifestul (package, versiune, min/target SDK, permisiuni, componente exportate) e citit cu " +
+                "PackageManager.getPackageArchiveInfo — direct din fișier, fără instalare.",
+            "Framework-ul și limbajul sunt deduse din semnături de fișiere și marcaje din DEX: Flutter (Dart), " +
+                "React Native (JS), Unity/Xamarin/.NET (C#), Cordova/Capacitor/NativeScript (JS/TS), Qt (C++), " +
+                "Kotlin, Java, cod nativ C/C++.",
+            "Din header-ul fiecărui .dex se citesc numărul de clase/metode/string-uri; un scor de ofuscare e " +
+                "estimat după cât de scurte sunt numele claselor (stil R8/ProGuard).",
+            "Codul e scanat (light RE) pentru URL-uri și posibile secrete: chei Google/AWS, token-uri Slack, " +
+                "JWT, Firebase, chei private, bucket-uri S3.",
+            "Semnătura: se extrage certificatul X.509 complet (subiect, emitent, serial, cheie publică, " +
+                "algoritm, valabilitate, amprente SHA-256 și SHA-1).",
+            "AndroidManifest.xml (binar) e decodat înapoi în XML lizibil, la fel și resursele XML din browser.",
+            "SDK-urile și tracker-ele (Firebase, AdMob, Facebook, AppsFlyer, OkHttp, Retrofit, Glide etc.) sunt " +
+                "detectate din marcajele DEX; se extrag și URL-uri, IP-uri, email-uri și posibile secrete.",
+            "Pentru aplicațiile instalate se analizează APK-ul de bază (sourceDir) plus split-urile."
+        ),
+        usage = listOf(
+            "Tab „From file”: apasă butonul și alege un .apk/.aab/.xapk/.apks din Download.",
+            "Tab „Installed apps”: caută și atinge o aplicație pentru a o analiza.",
+            "Extinde secțiunile raportului (Overview, Frameworks, SDKs, Signature, Permissions, Components, " +
+                "Native libs, DEX, Strings, File types, Manifest).",
+            "„Browse files” deschide structura proiectului: navighează prin foldere și deschide fișiere " +
+                "(text/XML decodat/hex) direct în aplicație.",
+            "„Extract to folder” îți cere să alegi o mapă (Storage Access Framework) și despachetează tot acolo."
+        ),
+        limitations = listOf(
+            "Manifestul unui .aab e în protobuf și NU poate fi citit pe telefon — la AAB lipsesc package/versiune/" +
+                "permisiuni (restul: framework, DEX, libs, secrete funcționează).",
+            "Nu e inclus un decompilator complet: pentru smali/Java rulează jadx sau apktool pe fișierele " +
+                "extrase din modulul Linux Terminal.",
+            "Detecția de ofuscare și de secrete e euristică — pot exista rezultate false pozitive/negative.",
+            "Analizează doar aplicații pe care ai dreptul legal să le inspectezi."
+        )
+    ),
+
+    // ---- Web App Testing ----------------------------------------------------
+    ModuleDoc(
+        route = NexusRoute.Tls.route,
+        title = "TLS/SSL Analyzer",
+        tagline = "Audit de configurare TLS: protocoale, cifruri, lanț de certificate, notă",
+        overview = "Introduci un host (opțional host:port) și NEXUS deschide conexiuni TLS reale ca să vadă ce " +
+            "versiuni de protocol acceptă serverul și ce certificat prezintă, apoi dă o notă de la A+ la F.",
+        howItWorks = listOf(
+            "Deschide socket-uri SSL native (SSLSocketFactory din JDK) și încearcă pe rând TLSv1, 1.1, 1.2, 1.3.",
+            "Citește protocolul și cifrul negociat și marchează cifrurile slabe (RC4, DES, 3DES, NULL, EXPORT, MD5).",
+            "Parsează lanțul de certificate X.509: subiect, emitent, SAN, valabilitate, algoritm de semnătură, cheie.",
+            "Verifică expirarea, self-signing, potrivirea hostname-ului și semnăturile slabe (SHA-1).",
+            "Convertește constatările într-un scor și o notă literă."
+        ),
+        usage = listOf(
+            "Scrie hostul (ex: example.com sau example.com:8443).",
+            "Apasă „Analyze TLS” și citește nota, protocoalele suportate, cifrul și detaliile certificatelor."
+        ),
+        limitations = listOf(
+            "Protocoalele testabile depind de ce suportă dispozitivul Android (TLS 1.0/1.1 pot fi dezactivate din sistem).",
+            "Nu enumeră toate cipher suite-urile posibile, ci pe cel negociat implicit per protocol."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Headers.route,
+        title = "Security Headers",
+        tagline = "Notă A–F pentru headerele de securitate HTTP",
+        overview = "Descarcă headerele răspunsului și evaluează configurarea de hardening (CSP, HSTS, X-Frame-Options etc.), " +
+            "apoi calculează un scor ponderat și o notă de la A la F.",
+        howItWorks = listOf(
+            "Trimite un GET și inspectează headerele de securitate cheie.",
+            "Fiecare header primește GOOD/WARN/BAD după prezență și calitate (ex: CSP cu unsafe-inline = WARN, HSTS cu max-age mic = WARN).",
+            "Semnalează și headerele care dezvăluie tehnologia (Server, X-Powered-By, X-AspNet-Version).",
+            "Scorul ponderat (CSP 25, HSTS 20, XFO/nosniff 15 etc.) devine notă A–F."
+        ),
+        usage = listOf(
+            "Introdu URL-ul complet și apasă „Grade Headers”.",
+            "Vezi nota, scorul și fiecare header cu explicație și recomandare."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.WebVuln.route,
+        title = "Web Vuln Scanner",
+        tagline = "Injectare de payload-uri: XSS, SQLi, open redirect, path traversal, SSRF",
+        overview = "Pentru fiecare parametru din query string injectează payload-uri și analizează răspunsul " +
+            "(reflectare, semnături de eroare, diferențe de dimensiune, timing) ca să detecteze vulnerabilități clasice.",
+        howItWorks = listOf(
+            "XSS reflectat: verifică dacă payload-ul apare needucat în corpul răspunsului.",
+            "SQLi: error-based (semnături de eroare SQL), boolean-based (diferență între TRUE/FALSE) și time-based (pg_sleep).",
+            "Open redirect: injectează un host atacator și verifică header-ul Location (fără redirect automat).",
+            "Path traversal: cere /etc/passwd și caută semnătura root:x:0:0.",
+            "SSRF: încearcă endpoint-uri de metadate cloud (169.254.169.254) și caută conținut specific."
+        ),
+        usage = listOf(
+            "Dă un URL cu parametri, ex: https://site.com/p?id=1&q=x.",
+            "Apasă „Scan” și inspectează constatările (tip, parametru, payload, dovadă)."
+        ),
+        limitations = listOf(
+            "Trimite trafic activ — folosește DOAR pe ținte pe care ai autorizație explicită.",
+            "Un singur request per payload; nu e un scanner complet gen Burp — poate rata cazuri stocate/blind complexe."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Fuzzer.route,
+        title = "Fuzzer",
+        tagline = "Fuzzing stil ffuf cu cuvântul-cheie FUZZ și filtre",
+        overview = "Pui cuvântul FUZZ oriunde în URL (cale, valoare de parametru, subdomeniu) și motorul înlocuiește " +
+            "fiecare intrare din wordlist, filtrând răspunsurile după status/dimensiune.",
+        howItWorks = listOf(
+            "Substituie FUZZ cu fiecare cuvânt și trimite cereri concurente (fără redirect automat).",
+            "Pentru fiecare răspuns măsoară status, dimensiune, număr de cuvinte și linii.",
+            "Filtre: ascunde anumite status-uri (implicit 404) sau afișează doar status-urile potrivite.",
+            "Poți folosi wordlist-ul încorporat sau unul propriu (separat prin spații/virgule)."
+        ),
+        usage = listOf(
+            "Introdu un URL cu FUZZ, ex: https://site.com/FUZZ.",
+            "Opțional pune un wordlist propriu și filtre de status, apoi apasă „Start Fuzzing”."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.JsRecon.route,
+        title = "JS Recon",
+        tagline = "Extrage endpoint-uri și secrete din fișierele JavaScript (stil LinkFinder)",
+        overview = "Descarcă pagina, găsește toate fișierele JS (și scripturile inline) și le scanează cu regex " +
+            "pentru endpoint-uri ascunse și secrete scurse.",
+        howItWorks = listOf(
+            "Extrage src-urile <script> și le rezolvă la URL-uri absolute.",
+            "Aplică regex-ul clasic de tip LinkFinder pentru căi/rute API/fișiere.",
+            "Caută secrete: chei Google/AWS, token-uri Slack/GitHub, chei Stripe, JWT, URL-uri Firebase, chei private.",
+            "Descarcă fișierele JS în paralel (până la 40)."
+        ),
+        usage = listOf(
+            "Introdu URL-ul site-ului și apasă „Extract”.",
+            "Vezi secretele, endpoint-urile (selectabile) și lista fișierelor JS."
+        ),
+        limitations = listOf(
+            "Nu execută JavaScript — găsește doar ce e vizibil static în cod.",
+            "Detecția secretelor e euristică; validează manual."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Exposed.route,
+        title = "Exposed Files",
+        tagline = "Caută fișiere sensibile expuse: .git, .env, backup-uri, config-uri, chei",
+        overview = "Cere o listă curată de fișiere de mare valoare și confirmă expunerea reală prin potrivirea " +
+            "conținutului (nu doar codul de status), ca să evite falsele pozitive de tip soft-404.",
+        howItWorks = listOf(
+            "Testează concurent ~35 de căi cunoscute (.git/HEAD, .env, backup.sql, web.config, id_rsa etc.).",
+            "Pentru fiecare potrivire verifică o semnătură de conținut (ex: ref: refs/ pentru .git/HEAD).",
+            "Marchează severitatea (HIGH/MEDIUM/LOW) și dacă expunerea e confirmată."
+        ),
+        usage = listOf(
+            "Introdu URL-ul de bază și apasă „Scan”.",
+            "Inspectează fișierele găsite, severitatea și notele."
+        ),
+        limitations = listOf(
+            "Doar pe ținte autorizate.",
+            "Unele servere pot returna 200 pentru orice — semnăturile reduc, dar nu elimină, falsele pozitive."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Graphql.route,
+        title = "GraphQL Inspector",
+        tagline = "Detectează endpoint GraphQL, rulează introspection, mapează schema",
+        overview = "Confirmă un endpoint GraphQL, rulează interogarea standard de introspection și, dacă e activată, " +
+            "mapează schema: tipuri rădăcină, query-uri, mutații și tipuri custom.",
+        howItWorks = listOf(
+            "Testează URL-ul dat și o listă de căi comune (/graphql, /api/graphql, /query etc.) cu {__typename}.",
+            "Rulează IntrospectionQuery și parsează __schema.",
+            "Extrage query-urile, mutațiile și tipurile cu câmpuri și argumente.",
+            "Semnalează introspection-ul activat public ca finding (ar trebui dezactivat în producție)."
+        ),
+        usage = listOf(
+            "Introdu domeniul sau endpoint-ul exact și apasă „Inspect”.",
+            "Vezi dacă introspection e ON/OFF și explorează schema."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Takeover.route,
+        title = "Subdomain Takeover",
+        tagline = "Detectează CNAME-uri „dangling” către servicii SaaS neclamate",
+        overview = "Rezolvă lanțul CNAME al țintei, îl potrivește cu domenii de provideri cunoscuți și verifică " +
+            "corpul răspunsului împotriva amprentei de resursă neclamată pentru a confirma un takeover posibil.",
+        howItWorks = listOf(
+            "Rezolvă CNAME prin DNS-over-HTTPS (Cloudflare).",
+            "Potrivește ținta CNAME cu marcaje de provideri (GitHub Pages, S3, Heroku, Shopify, Netlify etc.).",
+            "Descarcă pagina și caută amprenta de „resursă inexistentă” specifică providerului.",
+            "Marchează VULNERABLE dacă amprenta e confirmată, altfel POTENTIAL — verifică manual."
+        ),
+        usage = listOf(
+            "Introdu subdomeniul (ex: assets.target.com) și apasă „Check”.",
+            "Citește providerul, CNAME-ul și verdictul."
+        ),
+        limitations = listOf(
+            "Amprentele se schimbă în timp; un rezultat POTENTIAL necesită verificare manuală.",
+            "Doar pe domenii pe care ai dreptul să le testezi."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.WebSocket.route,
+        title = "WebSocket Tester",
+        tagline = "Conectare, trimitere de frame-uri și inspecție live (OkHttp WS)",
+        overview = "Deschide o conexiune ws(s):// folosind clientul WebSocket nativ din OkHttp și afișează întregul " +
+            "ciclu de viață: handshake, mesaje primite/trimise, închidere, erori.",
+        howItWorks = listOf(
+            "Normalizează URL-ul (http→ws, https→wss) și inițiază handshake-ul.",
+            "Loghează headerele de upgrade și fiecare frame (text sau binar).",
+            "Poți trimite frame-uri text și închide curat conexiunea."
+        ),
+        usage = listOf(
+            "Introdu un URL ws:// sau wss:// și apasă „Connect”.",
+            "Scrie un mesaj și apasă „Send”; urmărește frame-urile în timp real."
+        )
+    ),
+
+    // ---- OSINT & Intel ------------------------------------------------------
+    ModuleDoc(
+        route = NexusRoute.CrtSh.route,
+        title = "CT Log Enum",
+        tagline = "Subdomenii pasive din logurile Certificate Transparency (crt.sh)",
+        overview = "Interoghează API-ul public crt.sh pentru toate certificatele emise pentru un domeniu și extrage " +
+            "subdomeniile din numele SAN — fără a trimite pachete către țintă.",
+        howItWorks = listOf(
+            "Cere crt.sh (output=json) pentru %.domeniu.",
+            "Deduplică numele din certificate și le filtrează pe cele care aparțin domeniului.",
+            "Afișează pentru fiecare subdomeniu emitentul și data primei apariții."
+        ),
+        usage = listOf(
+            "Introdu domeniul rădăcină (ex: example.com) și apasă „Enumerate”."
+        ),
+        limitations = listOf(
+            "crt.sh poate limita ratele sau răspunde lent.",
+            "Enumerare pasivă: nu confirmă că subdomeniile sunt încă active."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Wayback.route,
+        title = "Wayback URLs",
+        tagline = "URL-uri istorice dintr-un domeniu (API CDX de la web.archive.org)",
+        overview = "Extrage toate URL-urile arhivate pentru un domeniu, deduplică, extrage parametrii distincți și " +
+            "evidențiază endpoint-urile interesante pentru recon.",
+        howItWorks = listOf(
+            "Interoghează API-ul CDX (collapse=urlkey) pentru domeniu (opțional cu subdomenii).",
+            "Extrage numele parametrilor din query string.",
+            "Marchează URL-urile interesante după extensii sensibile și cuvinte-cheie."
+        ),
+        usage = listOf(
+            "Introdu domeniul, alege opțiunile și apasă „Fetch”.",
+            "Comută „Only interesting” pentru a filtra."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Exif.route,
+        title = "EXIF Extractor",
+        tagline = "Metadate din imagini: GPS, dispozitiv, timp, software",
+        overview = "Citește setul complet de tag-uri EXIF dintr-o imagine aleasă, inclusiv coordonatele GPS, și " +
+            "semnalează metadatele relevante pentru confidențialitate.",
+        howItWorks = listOf(
+            "Folosește androidx.ExifInterface pentru a citi tag-urile din fluxul imaginii.",
+            "Grupează câmpurile (Image, Camera, Time, Software, GPS).",
+            "Extrage coordonatele și oferă un link Google Maps.",
+            "Semnalează scurgeri: locație GPS, serial dispozitiv, nume proprietar, software."
+        ),
+        usage = listOf(
+            "Apasă „Pick image” și alege o imagine.",
+            "Vezi GPS-ul, notele de confidențialitate și toate tag-urile."
+        ),
+        limitations = listOf(
+            "Multe rețele sociale elimină EXIF-ul la upload — imaginile de acolo pot fi „curate”."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Dork.route,
+        title = "Dork Builder",
+        tagline = "Generează query-uri de dorking Google + GitHub și caută secrete pe GitHub",
+        overview = "Construiește interogări gata de rulat pentru Google și GitHub (fișiere expuse, panouri de login, " +
+            "config-uri, secrete) și, cu un token GitHub, rulează căutări live de cod.",
+        howItWorks = listOf(
+            "Generează dork-uri Google pe categorii (Files, Login & Admin, Secrets & Errors, Infra & Cloud).",
+            "Generează dork-uri GitHub pentru parole, chei API, token-uri, chei private.",
+            "Cu un token GitHub, apelează api.github.com/search/code pentru rezultate reale."
+        ),
+        usage = listOf(
+            "Introdu domeniul/keyword-ul și apasă „Build dorks”.",
+            "Atinge un dork pentru a-l deschide în browser; opțional pune un token pentru căutare live."
+        ),
+        limitations = listOf(
+            "Căutarea de cod GitHub necesită un token (API-ul cere autentificare)."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Shodan.route,
+        title = "Shodan Lookup",
+        tagline = "Expunerea unui IP pe internet: porturi, CVE-uri, servicii",
+        overview = "Implicit folosește API-ul gratuit InternetDB de la Shodan (porturi, hostname-uri, tag-uri, CPE, " +
+            "CVE-uri cunoscute) și, cu o cheie Shodan, trece la API-ul complet de host.",
+        howItWorks = listOf(
+            "Fără cheie: interoghează internetdb.shodan.io/{ip} — gratuit, fără autentificare.",
+            "Cu cheie: interoghează api.shodan.io/shodan/host/{ip} pentru org, ISP, OS și bannere per serviciu.",
+            "Afișează porturile deschise, vulnerabilitățile cunoscute și CPE-urile."
+        ),
+        usage = listOf(
+            "Introdu un IP și (opțional) o cheie Shodan, apoi apasă „Lookup”."
+        ),
+        limitations = listOf(
+            "InternetDB acoperă doar IP-uri deja indexate de Shodan.",
+            "Datele complete (bannere/servicii) necesită o cheie API Shodan."
+        )
+    ),
+
+    // ---- Mobile & RE --------------------------------------------------------
+    ModuleDoc(
+        route = NexusRoute.ApkAudit.route,
+        title = "APK Security Audit",
+        tagline = "Scor de risc stil MobSF pe baza manifestului și a raportului static",
+        overview = "Refolosește motorul APK Inspector pentru a încărca pachetul, apoi evaluează manifestul decodat " +
+            "împotriva unei liste de hardening și produce un scor de risc și o notă.",
+        howItWorks = listOf(
+            "Verifică debuggable, allowBackup, usesCleartextTraffic și prezența network security config.",
+            "Detectează componentele exportate fără android:permission (providerii exportați = HIGH).",
+            "Listează permisiunile periculoase și semnalează minSdk prea mic și URL-uri HTTP în cod.",
+            "Enumeră deep link-urile și marchează App Links fără autoVerify.",
+            "Calculează un scor ponderat (0–100) și o notă A–F."
+        ),
+        usage = listOf(
+            "Tab „From file” sau „Installed apps” — alege pachetul.",
+            "Citește nota, scorul și fiecare finding cu dovezi."
+        ),
+        limitations = listOf(
+            "La .aab manifestul e protobuf și nu poate fi analizat pe telefon.",
+            "Verificările sunt statice, pe manifest/raport; nu rulează aplicația."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.DeepLink.route,
+        title = "Deep-Link Tester",
+        tagline = "Enumeră deep link-urile aplicațiilor și lansează intent-uri de test",
+        overview = "Citește manifestul unei aplicații instalate (via APK Inspector) pentru a enumera filtrele VIEW " +
+            "BROWSABLE, rezolvă ce aplicații gestionează un URI și lansează intent-uri reale de test.",
+        howItWorks = listOf(
+            "Parsează intent-filter-ele browsable și extrage scheme/host-uri.",
+            "queryIntentActivities arată ce aplicații pot gestiona un URI dat.",
+            "startActivity(ACTION_VIEW) lansează link-ul (opțional către un pachet anume)."
+        ),
+        usage = listOf(
+            "Folosește „Manual intent” pentru a rezolva/lansa un URI oarecare.",
+            "Sau alege o aplicație instalată pentru a-i enumera deep link-urile și a le lansa."
+        ),
+        limitations = listOf(
+            "Lansarea unui intent poate deschide efectiv alte aplicații — folosește cu atenție."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.Firebase.route,
+        title = "Firebase Checker",
+        tagline = "Testează citirea deschisă a bazelor Firebase Realtime (/.json)",
+        overview = "Colectează URL-uri de baze Firebase (dintr-un APK ales/instalat sau introduse manual) și cere " +
+            "rădăcina /.json a fiecărei baze pentru a detecta bazele citibile public.",
+        howItWorks = listOf(
+            "Extrage URL-urile firebaseio.com / firebasedatabase.app din URL-urile și secretele raportului APK.",
+            "Din id-uri de proiect firebaseapp.com deduce baze RTDB implicite (-default-rtdb).",
+            "Cere https://<db>/.json și interpretează răspunsul (date = deschis, Permission denied = securizat)."
+        ),
+        usage = listOf(
+            "Introdu manual un id de proiect/URL sau extrage dintr-un APK, apoi verifică.",
+            "Bazele marcate OPEN expun date public."
+        ),
+        limitations = listOf(
+            "Testează doar citirea rădăcinii; unele baze securizează rădăcina dar expun căi specifice.",
+            "Doar pe ținte autorizate."
+        )
+    ),
+    ModuleDoc(
+        route = NexusRoute.DexScan.route,
+        title = "DEX API Scanner",
+        tagline = "Scanează DEX pentru pattern-uri de API riscante",
+        overview = "Refolosește motorul APK Inspector pentru a obține arhiva, apoi parcurge string pool-ul fiecărui " +
+            "classes*.dex și îl potrivește cu un set de reguli de API-uri periculoase.",
+        howItWorks = listOf(
+            "Streamuiește string-urile din fiecare .dex și caută marcaje ca addJavascriptInterface, AES/ECB, " +
+                "AllowAllHostnameVerifier, Runtime/ProcessBuilder, DexClassLoader, MODE_WORLD_READABLE etc.",
+            "Grupează pe categorii (WebView JS bridge, crypto slab, TLS nesigur, execuție de comenzi, " +
+                "încărcare dinamică de cod, stocare nesigură) cu severitate și număr de apariții.",
+            "Calculează un scor de risc din numărul și gravitatea potrivirilor."
+        ),
+        usage = listOf(
+            "Alege un APK din fișier sau din aplicațiile instalate.",
+            "Citește categoriile găsite, API-ul potrivit și descrierea riscului."
+        ),
+        limitations = listOf(
+            "Potrivire pe string-uri: prezența unui marcaj nu înseamnă întotdeauna o vulnerabilitate reală.",
+            "Nu decompilează bytecode-ul — pentru context complet folosește jadx pe fișierele extrase."
+        )
     )
 ).associateBy { it.route }

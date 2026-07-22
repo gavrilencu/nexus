@@ -6,47 +6,49 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Bold, confident sans-serif scale for a premium SaaS feel (headlines lean
-// ExtraBold with tight tracking). Monospace is reserved for actual technical
-// output (hashes, tokens, terminal text) via MonoBody below rather than
-// forced across every label and heading.
+// Terminal/hacker scale — structural text (headlines, titles, labels, the
+// brand wordmark) is monospace with a slight tracking to read like a CRT
+// console, while body copy stays in the default sans for comfortable reading
+// of longer descriptions and documentation. MonoBody below is still used for
+// raw technical output (hashes, tokens, terminal text).
 private val Sans = FontFamily.Default
+private val Mono = FontFamily.Monospace
 
 val Typography = Typography(
     displayLarge = TextStyle(
-        fontFamily = Sans,
+        fontFamily = Mono,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 36.sp,
         lineHeight = 42.sp,
-        letterSpacing = (-0.5).sp
+        letterSpacing = 1.sp
     ),
     headlineLarge = TextStyle(
-        fontFamily = Sans,
+        fontFamily = Mono,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 25.sp,
         lineHeight = 31.sp,
-        letterSpacing = (-0.25).sp
+        letterSpacing = 0.5.sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = Sans,
+        fontFamily = Mono,
         fontWeight = FontWeight.Bold,
         fontSize = 20.sp,
         lineHeight = 26.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.5.sp
     ),
     titleLarge = TextStyle(
-        fontFamily = Sans,
+        fontFamily = Mono,
         fontWeight = FontWeight.SemiBold,
         fontSize = 18.sp,
         lineHeight = 24.sp,
-        letterSpacing = 0.sp
+        letterSpacing = 0.3.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = Sans,
+        fontFamily = Mono,
         fontWeight = FontWeight.SemiBold,
         fontSize = 15.sp,
         lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
+        letterSpacing = 0.3.sp
     ),
     bodyLarge = TextStyle(
         fontFamily = Sans,
@@ -70,18 +72,18 @@ val Typography = Typography(
         letterSpacing = 0.1.sp
     ),
     labelLarge = TextStyle(
-        fontFamily = Sans,
+        fontFamily = Mono,
         fontWeight = FontWeight.Medium,
         fontSize = 13.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.2.sp
+        letterSpacing = 0.4.sp
     ),
     labelSmall = TextStyle(
-        fontFamily = Sans,
+        fontFamily = Mono,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 14.sp,
-        letterSpacing = 0.3.sp
+        letterSpacing = 0.5.sp
     )
 )
 

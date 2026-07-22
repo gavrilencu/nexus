@@ -3,30 +3,30 @@ package com.example.toolkit.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// Premium-SaaS palette v2 — deep navy-violet base with a glass-card surface
-// system and a vivid violet→cyan gradient accent (think Stripe/Revolut),
-// replacing the flat slate/indigo v1 theme. Names are kept stable so this
-// cascades through every screen without touching call sites.
-val VoidBlack = Color(0xFF0A0916)        // app background
-val MatrixBlack = Color(0xFF120F24)      // top bar / drawer / recessed surfaces
-val PanelGreen = Color(0xFF171330)       // glass card background (paired with GlassBorder)
-val BorderGreen = Color(0xFF2C2650)      // hairlines, dividers, default outlines
-val NeonGreen = Color(0xFF8B5CF6)        // primary accent (violet) — solid fallback for the gradient
-val SoftGreen = Color(0xFF34D399)        // success / "online" / positive status
-val DimGreen = Color(0xFFA78BFA)         // secondary accent (light violet)
-val MuteGreen = Color(0xFF9C93C2)        // secondary text, captions
-val AlertAmber = Color(0xFFF5A623)       // warnings
-val AlertRed = Color(0xFFEF4444)         // errors / destructive
-val GhostWhite = Color(0xFFF6F4FC)       // primary text on dark surfaces
-val TerminalGray = Color(0xFFAAA2C6)     // tertiary text / metadata
+// Hacker / matrix-terminal palette v3 — phosphor green on near-black, with a
+// subtle green-tinted glass surface system and a lime→emerald gradient accent
+// (think classic CRT terminal). Variable names are kept stable so the retheme
+// cascades through every screen and component without touching call sites.
+val VoidBlack = Color(0xFF040705)        // app background — near-black w/ faint green
+val MatrixBlack = Color(0xFF080D0A)      // top bar / drawer / recessed surfaces
+val PanelGreen = Color(0xFF0B140F)       // glass card background (paired with GlassBorder)
+val BorderGreen = Color(0xFF1B3A2A)      // hairlines, dividers, default outlines
+val NeonGreen = Color(0xFF00FF9C)        // primary accent (phosphor green)
+val SoftGreen = Color(0xFF00E676)        // success / "online" / positive status
+val DimGreen = Color(0xFF14C76B)         // secondary accent (deeper green)
+val MuteGreen = Color(0xFF5FA981)        // secondary text, captions
+val AlertAmber = Color(0xFFFFC043)       // warnings
+val AlertRed = Color(0xFFFF5C5C)         // errors / destructive
+val GhostWhite = Color(0xFFCFFBE6)       // primary text — soft phosphor white-green
+val TerminalGray = Color(0xFF7CA893)     // tertiary text / metadata
 
-// Gradient accent — the signature of the "premium SaaS" look. Used on
-// primary buttons, module icon badges, and headline wordmarks.
-val GradientStart = Color(0xFF8B5CF6)    // violet-500
-val GradientEnd = Color(0xFF06B6D4)      // cyan-500
+// Gradient accent — the signature of the terminal look. Used on primary
+// buttons, module icon badges, and headline wordmarks.
+val GradientStart = Color(0xFF00FF9C)    // phosphor mint
+val GradientEnd = Color(0xFF00C853)      // emerald
 val AccentGradient = Brush.linearGradient(listOf(GradientStart, GradientEnd))
 
 // Glass-card surface tokens.
-val SurfaceRaised = Color(0xFF1D1840)
-val GlassBorder = Color(0xFFFFFFFF)      // used with alpha at call sites (e.g. GlassBorder.copy(alpha = 0.10f))
-val AccentSoft = Color(0xFF8B5CF6).copy(alpha = 0.16f)
+val SurfaceRaised = Color(0xFF0E1A13)
+val GlassBorder = Color(0xFF00FF9C)      // used with alpha at call sites — glows green
+val AccentSoft = Color(0xFF00FF9C).copy(alpha = 0.14f)

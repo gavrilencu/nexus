@@ -220,7 +220,7 @@ private fun LockScreen(
                     Icon(
                         imageVector = Icons.Default.Shield,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = Color.Black,
                         modifier = Modifier.size(36.dp)
                     )
                 }
