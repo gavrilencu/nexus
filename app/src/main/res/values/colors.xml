@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="void_black">#FF0A0916</color>
+    <color name="neon_green">#FF8B5CF6</color>
+    <color name="panel_green">#FF171330</color>
+    <color name="grid_green">#FF2C2650</color>
+    <color name="ic_launcher_background">#FF0A0916</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
