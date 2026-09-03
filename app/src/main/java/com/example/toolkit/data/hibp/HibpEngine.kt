@@ -2,6 +2,7 @@ package com.example.toolkit.data.hibp
 
 import android.content.Context
 import com.example.toolkit.data.network.HttpClients
+import com.example.toolkit.security.KeystoreCipher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -56,10 +57,28 @@ class HibpEngine(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("nexus_hibp", Context.MODE_PRIVATE)
     private val userAgent = "NEXUS-Toolkit-Android"
 
-    fun getApiKey(): String = prefs.getString("api_key", "").orEmpty()
+    fun getApiKey(): String {
+        prefs.getString(KEY_ENC, null)?.let { enc ->
+            return runCatching { KeystoreCipher.decryptString(HIBP_KEY_ALIAS, enc) }.getOrDefault("")
+        }
+        // Migrate a key saved in plaintext by an older build, then drop the plaintext.
+        val legacy = prefs.getString(KEY_LEGACY, "").orEmpty()
+        if (legacy.isNotBlank()) {
+            saveApiKey(legacy)
+            return legacy
+        }
+        return ""
+    }
 
     fun saveApiKey(key: String) {
-        prefs.edit().putString("api_key", key.trim()).apply()
+        val trimmed = key.trim()
+        val editor = prefs.edit().remove(KEY_LEGACY)
+        if (trimmed.isBlank()) {
+            editor.remove(KEY_ENC)
+        } else {
+            editor.putString(KEY_ENC, KeystoreCipher.encryptString(HIBP_KEY_ALIAS, trimmed))
+        }
+        editor.apply()
     }
 
     suspend fun checkEmail(account: String): HibpEmailResult = withContext(Dispatchers.IO) {
@@ -292,5 +311,11 @@ class HibpEngine(context: Context) {
         val md = MessageDigest.getInstance("SHA-1")
         val bytes = md.digest(input.toByteArray(StandardCharsets.UTF_8))
         return bytes.joinToString("") { "%02x".format(it) }
+    }
+
+    private companion object {
+        const val KEY_ENC = "api_key_enc"
+        const val KEY_LEGACY = "api_key"
+        const val HIBP_KEY_ALIAS = "nexus_hibp_key_wrap"
     }
 }

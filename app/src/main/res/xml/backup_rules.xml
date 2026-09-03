@@ -1,13 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Legacy Auto Backup rules (API < 31). allowBackup is false, so this is
+   defense-in-depth: even if backup were enabled, never let the MITM CA key
+   material or saved API keys leave the device.
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="file" path="mitm_ca/" />
+    <exclude domain="sharedpref" path="nexus_hibp.xml" />
 </full-backup-content>

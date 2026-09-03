@@ -1,5 +1,15 @@
 *.iml
 .gradle
+.kotlin
+
+# Release signing — never commit
+keystore.properties
+*.keystore
+*.jks
+
+# Build outputs
+/app/release/
+/app/debug/
 /local.properties
 /.idea/caches
 /.idea/libraries

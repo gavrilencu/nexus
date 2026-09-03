@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <cache-path name="cache" path="." />
-    <files-path name="files" path="." />
+    <!-- Scoped to a single export folder. Never expose filesDir/cacheDir roots:
+         that would hand out the MITM CA private key and other internal files. -->
+    <cache-path name="shared" path="shared/" />
 </paths>

@@ -148,6 +148,14 @@ fun MitmScreen(vm: MitmViewModel = viewModel()) {
                     if (stats.listenHint.isNotBlank()) {
                         Text("Listen: ${stats.listenHint}", color = NeonGreen, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     }
+                    if (stats.proxyAuth.isNotBlank()) {
+                        Text(
+                            "LAN login (Basic): ${stats.proxyAuth}",
+                            color = NeonGreen,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 12.sp
+                        )
+                    }
                     Spacer(modifier = Modifier.height(10.dp))
                     if (!running) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

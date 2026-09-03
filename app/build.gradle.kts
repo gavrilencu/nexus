@@ -1,14 +1,28 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
 
+// Release signing is read from keystore.properties at the repo root (gitignored),
+// so no secrets live in this build script or in version control. See RELEASE.md.
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps = Properties().apply {
+    if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
+}
+
 android {
     namespace = "com.example.toolkit"
+    // Required by androidx.core 1.19.0 / lifecycle 2.11.0 (they compile against 37).
+    // compileSdk may exceed targetSdk; this is not a preview opt-in.
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.toolkit"
+        // Play Store identity — permanent once published. The internal `namespace`
+        // (com.example.toolkit) is intentionally left unchanged: it is invisible to
+        // Play and users, and renaming it would touch every source file for no gain.
+        applicationId = "md.gavrilencudev.toolkit"
         minSdk = 24
         targetSdk = 36
         versionCode = 5
@@ -19,11 +33,28 @@ android {
         }
     }
 
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            optimization {
-                enable = false
-            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            // Uses the release keystore when keystore.properties is present; the
+            // build still assembles unsigned otherwise (CI, local checks).
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     compileOptions {
@@ -32,6 +63,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         jniLibs {

@@ -481,7 +481,7 @@ private fun DrawerBrandHeader() {
                 .background(AccentGradient),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Shield, contentDescription = null, tint = Color.Black)
+            Icon(Icons.Default.Shield, contentDescription = null, tint = com.example.toolkit.ui.theme.OnAccent)
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column {

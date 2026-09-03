@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.toolkit.ui.theme.AccentGradient
+import com.example.toolkit.ui.theme.AccentSoft
 import com.example.toolkit.ui.theme.AlertAmber
 import com.example.toolkit.ui.theme.BorderGreen
 import com.example.toolkit.ui.theme.GhostWhite
@@ -54,6 +55,7 @@ import com.example.toolkit.ui.theme.MatrixBlack
 import com.example.toolkit.ui.theme.MonoBody
 import com.example.toolkit.ui.theme.MuteGreen
 import com.example.toolkit.ui.theme.NeonGreen
+import com.example.toolkit.ui.theme.OnAccent
 import com.example.toolkit.ui.theme.PanelGreen
 import com.example.toolkit.ui.theme.SurfaceRaised
 import com.example.toolkit.ui.theme.TerminalGray
@@ -75,8 +77,8 @@ fun NexusPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(PanelGreen.copy(alpha = 0.82f), RoundedCornerShape(18.dp))
-            .border(1.dp, GlassBorder.copy(alpha = 0.10f), RoundedCornerShape(18.dp))
+            .background(PanelGreen, RoundedCornerShape(18.dp))
+            .border(1.dp, GlassBorder.copy(alpha = 0.16f), RoundedCornerShape(18.dp))
             .padding(18.dp)
     ) {
         if (title != null) {
@@ -209,7 +211,7 @@ fun NexusButton(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
-                        color = Color.Black,
+                        color = OnAccent,
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(10.dp))
@@ -217,7 +219,7 @@ fun NexusButton(
             }
             Text(
                 text,
-                color = if (isActive) Color.Black else MuteGreen,
+                color = if (isActive) OnAccent else MuteGreen,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -276,25 +278,25 @@ fun ModuleCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = PanelGreen.copy(alpha = 0.82f)),
-        border = BorderStroke(1.dp, GlassBorder.copy(alpha = 0.10f)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = PanelGreen),
+        border = BorderStroke(1.dp, GlassBorder.copy(alpha = 0.16f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(horizontal = 14.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(AccentGradient),
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AccentSoft),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = Color.Black)
+                Icon(icon, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(22.dp))
             }
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -304,14 +306,15 @@ fun ModuleCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.height(3.dp))
-                Text(subtitle, color = TerminalGray, style = MaterialTheme.typography.bodySmall)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(subtitle, color = TerminalGray, style = MaterialTheme.typography.bodySmall, maxLines = 1)
             }
             Spacer(modifier = Modifier.width(8.dp))
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = MuteGreen
+                tint = MuteGreen,
+                modifier = Modifier.size(20.dp)
             )
         }
     }

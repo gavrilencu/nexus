@@ -30,5 +30,7 @@ data class MitmStats(
     val http: Long = 0,
     val errors: Long = 0,
     val proxyPort: Int = MitmProxyServer.DEFAULT_PORT,
-    val listenHint: String = ""
+    val listenHint: String = "",
+    /** `user:pass` a LAN client must set as proxy credentials; blank = none required. */
+    val proxyAuth: String = ""
 )

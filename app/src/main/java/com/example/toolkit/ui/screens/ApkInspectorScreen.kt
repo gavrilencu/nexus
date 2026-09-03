@@ -715,7 +715,7 @@ private fun TabChip(label: String, selected: Boolean, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Text(label, color = if (selected) Color.Black else MuteGreen, fontWeight = FontWeight.Bold,
+        Text(label, color = if (selected) com.example.toolkit.ui.theme.OnAccent else MuteGreen, fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.labelLarge)
     }
 }

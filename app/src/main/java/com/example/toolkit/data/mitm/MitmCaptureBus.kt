@@ -26,14 +26,21 @@ object MitmCaptureBus {
         _hostFilter.value = v.trim()
     }
 
-    fun setRunning(on: Boolean, mode: String = if (on) "proxy" else "idle", port: Int = MitmProxyServer.DEFAULT_PORT, hint: String = "") {
+    fun setRunning(
+        on: Boolean,
+        mode: String = if (on) "proxy" else "idle",
+        port: Int = MitmProxyServer.DEFAULT_PORT,
+        hint: String = "",
+        proxyAuth: String = ""
+    ) {
         _running.value = on
         _stats.update {
             it.copy(
                 running = on,
                 mode = mode,
                 proxyPort = port,
-                listenHint = hint
+                listenHint = hint,
+                proxyAuth = proxyAuth
             )
         }
     }

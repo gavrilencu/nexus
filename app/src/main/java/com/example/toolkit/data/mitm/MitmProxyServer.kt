@@ -1,5 +1,6 @@
 package com.example.toolkit.data.mitm
 
+import android.util.Base64
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.net.InetAddress
@@ -8,7 +9,29 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLPeerUnverifiedException
 import javax.net.ssl.SSLSocket
+
+/** Basic-auth credential required from non-loopback (LAN) proxy clients. */
+data class ProxyCredential(val username: String, val password: String) {
+    /** The exact `Proxy-Authorization` header value a client must send. */
+    val headerValue: String by lazy {
+        "Basic " + Base64.encodeToString("$username:$password".toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+    }
+
+    /** `user:pass` for display so the user can configure their LAN client. */
+    val display: String get() = "$username:$password"
+
+    companion object {
+        private const val ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"
+        fun random(): ProxyCredential {
+            val rnd = java.security.SecureRandom()
+            val pass = buildString { repeat(12) { append(ALPHABET[rnd.nextInt(ALPHABET.length)]) } }
+            return ProxyCredential("nexus", pass)
+        }
+    }
+}
 
 /**
  * Explicit HTTP(S) MITM proxy.
@@ -22,7 +45,15 @@ import javax.net.ssl.SSLSocket
 class MitmProxyServer(
     private val ca: MitmCaManager,
     private val port: Int = DEFAULT_PORT,
-    private val protect: ((Socket) -> Boolean)? = null
+    private val protect: ((Socket) -> Boolean)? = null,
+    private val bindAddress: String = "0.0.0.0",
+    /**
+     * When set, non-loopback (LAN) clients must send a matching
+     * `Proxy-Authorization: Basic …`. Loopback clients (the transparent VPN
+     * handler and on-device apps) are always exempt, so this closes the
+     * open-relay exposure without breaking device-local capture.
+     */
+    private val credential: ProxyCredential? = null
 ) {
     private val running = AtomicBoolean(false)
     private var server: ServerSocket? = null
@@ -32,7 +63,7 @@ class MitmProxyServer(
 
     fun start() {
         if (running.getAndSet(true)) return
-        server = ServerSocket(port, 50, InetAddress.getByName("0.0.0.0"))
+        server = ServerSocket(port, 50, InetAddress.getByName(bindAddress))
         pool.execute {
             while (running.get()) {
                 try {
@@ -58,6 +89,10 @@ class MitmProxyServer(
             val input = BufferedInputStream(client.getInputStream())
             val output = BufferedOutputStream(client.getOutputStream())
             val req = HttpMessageIo.readMessage(input, isRequest = true) ?: return
+            if (!isAuthorized(client, req)) {
+                HttpMessageIo.writeAll(output, PROXY_AUTH_REQUIRED)
+                return
+            }
             val via = req.header("X-Nexus-Via") ?: "proxy"
             if (req.method == "CONNECT") {
                 handleConnect(client, output, req, via)
@@ -68,6 +103,22 @@ class MitmProxyServer(
         } finally {
             runCatching { client.close() }
         }
+    }
+
+    /**
+     * Loopback peers are always trusted (on-device / VPN handler). Any other
+     * peer must present the configured Basic credential.
+     */
+    private fun isAuthorized(client: Socket, req: RawHttpMessage): Boolean {
+        val cred = credential ?: return true
+        if (client.inetAddress?.isLoopbackAddress == true) return true
+        val provided = req.header("Proxy-Authorization")?.trim() ?: return false
+        // Constant-time-ish compare on the fixed-length header value.
+        val expected = cred.headerValue
+        if (provided.length != expected.length) return false
+        var diff = 0
+        for (i in expected.indices) diff = diff or (provided[i].code xor expected[i].code)
+        return diff == 0
     }
 
     private fun handleConnect(
@@ -251,7 +302,15 @@ class MitmProxyServer(
         val remote = factory.createSocket(plain, host, port, true) as SSLSocket
         remote.soTimeout = 25_000
         remote.tcpNoDelay = true
+        // Enable SNI + endpoint-identification so the platform validates the chain
+        // for THIS host, then verify the presented hostname explicitly — without
+        // this the proxy's own upstream leg could itself be MITM'd.
+        remote.sslParameters = remote.sslParameters.apply { endpointIdentificationAlgorithm = "HTTPS" }
         remote.startHandshake()
+        if (!HttpsURLConnection.getDefaultHostnameVerifier().verify(host, remote.session)) {
+            runCatching { remote.close() }
+            throw SSLPeerUnverifiedException("Upstream certificate hostname mismatch for $host")
+        }
         return remote
     }
 
@@ -305,5 +364,10 @@ class MitmProxyServer(
 
     companion object {
         const val DEFAULT_PORT = 8888
+        private val PROXY_AUTH_REQUIRED =
+            ("HTTP/1.1 407 Proxy Authentication Required\r\n" +
+                "Proxy-Authenticate: Basic realm=\"NEXUS\"\r\n" +
+                "Content-Length: 0\r\n" +
+                "Connection: close\r\n\r\n").toByteArray()
     }
 }

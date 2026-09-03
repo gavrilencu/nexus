@@ -84,23 +84,23 @@ fun DashboardScreen(
             .padding(16.dp)
     ) {
         GradientBrandText(text = "NEXUS")
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = "// enterprise security toolkit",
+            text = "Professional security toolkit",
             color = MuteGreen,
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.titleMedium
         )
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatusChip("v1.2")
-            StatusChip("${nexusModules.size} modules")
-            StatusChip("● online", color = NeonGreen)
+            StatusChip("${nexusModules.size} tools")
+            StatusChip("${nexusCategories.size} categories")
         }
 
         Spacer(modifier = Modifier.height(20.dp))
         NexusSearchField(
             value = query,
             onValueChange = { query = it },
-            placeholder = "search modules — recon, hash, jwt, ports…"
+            placeholder = "Search tools — recon, hash, JWT, ports…"
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -151,11 +151,11 @@ fun DashboardScreen(
                     tint = MuteGreen
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("no modules match \"$query\"", color = MuteGreen)
+                Text("No tools match \"$query\"", color = MuteGreen)
             }
         } else {
             Text(
-                "results (${filtered.size})",
+                "Results (${filtered.size})",
                 color = GhostWhite,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
@@ -183,7 +183,7 @@ fun DashboardScreen(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "NEXUS — for authorized security operations",
+                text = "NEXUS — for authorized security testing only",
                 color = MuteGreen,
                 fontSize = 11.sp
             )
@@ -221,7 +221,7 @@ private fun CategorySection(
                 .background(AccentGradient),
             contentAlignment = Alignment.Center
         ) {
-            Icon(category.icon, contentDescription = null, tint = Color.Black)
+            Icon(category.icon, contentDescription = null, tint = com.example.toolkit.ui.theme.OnAccent)
         }
         Column(
             modifier = Modifier
@@ -234,10 +234,12 @@ private fun CategorySection(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                "$ ${category.command}",
-                color = NeonGreen.copy(alpha = 0.85f),
-                style = MaterialTheme.typography.labelSmall
+                category.description,
+                color = MuteGreen,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1
             )
         }
         CountBadge(count)

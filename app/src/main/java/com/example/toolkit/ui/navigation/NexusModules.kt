@@ -1,40 +1,51 @@
 package com.example.toolkit.ui.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Api
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Dangerous
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Fingerprint
-import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.FindInPage
+import androidx.compose.material.icons.filled.GppMaybe
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Http
-import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.filled.Https
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Javascript
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Lan
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.ManageSearch
+import androidx.compose.material.icons.filled.NetworkCheck
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Radar
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Schema
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.SettingsEthernet
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Token
 import androidx.compose.material.icons.filled.TravelExplore
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.filled.WifiTethering
-import androidx.compose.material.icons.filled.Lan
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Android
-import androidx.compose.material.icons.filled.Https
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Javascript
-import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.ManageSearch
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Code
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -131,15 +142,15 @@ val nexusModules: List<NexusModule> = listOf(
     // Recon & Mapping
     NexusModule("Domain Recon", "DNS · HTTP · TLS · Geo · Headers", Icons.Default.TravelExplore, NexusRoute.Recon.route, Cat.RECON),
     NexusModule("DNS Dig", "A · AAAA · MX · NS · TXT · CNAME · SOA", Icons.Default.Dns, NexusRoute.Dns.route, Cat.RECON),
-    NexusModule("Subdomain Finder", "Wordlist brute · live DNS resolve", Icons.Default.Hub, NexusRoute.Subdomain.route, Cat.RECON),
-    NexusModule("Port Scanner", "Common services · live progress", Icons.Default.Radar, NexusRoute.Ports.route, Cat.RECON),
+    NexusModule("Subdomain Finder", "Wordlist brute · live DNS resolve", Icons.Default.AccountTree, NexusRoute.Subdomain.route, Cat.RECON),
+    NexusModule("Port Scanner", "Common services · live progress", Icons.Default.SettingsEthernet, NexusRoute.Ports.route, Cat.RECON),
     NexusModule("IP Tools", "Resolve · reverse · geo · reachability", Icons.Default.Language, NexusRoute.Ip.route, Cat.RECON),
-    NexusModule("Content Discovery", "Dir/file brute-force · live status", Icons.Default.FolderOpen, NexusRoute.DirScan.route, Cat.RECON),
+    NexusModule("Content Discovery", "Dir/file brute-force · live status", Icons.Default.FindInPage, NexusRoute.DirScan.route, Cat.RECON),
     NexusModule("Web Fingerprint", "Server · CMS · framework · CDN/WAF · JS", Icons.Default.Widgets, NexusRoute.Fingerprint.route, Cat.RECON),
     NexusModule("WHOIS / RDAP", "Domain & IP registration via RDAP", Icons.Default.Badge, NexusRoute.Whois.route, Cat.RECON),
 
     // Traffic & Network
-    NexusModule("Traffic Monitor", "HTTP capture · headers · latency", Icons.Default.Dns, NexusRoute.Traffic.route, Cat.TRAFFIC),
+    NexusModule("Traffic Monitor", "HTTP capture · headers · latency", Icons.Default.NetworkCheck, NexusRoute.Traffic.route, Cat.TRAFFIC),
     NexusModule("Wi-Fi/SIM Monitor", "Devices · SIM · live traffic decoded", Icons.Default.WifiTethering, NexusRoute.WifiMonitor.route, Cat.TRAFFIC),
     NexusModule("MITM / Proxy Capture", "HTTPS decrypt · req/res · host filter", Icons.Default.VpnKey, NexusRoute.Mitm.route, Cat.TRAFFIC),
 
@@ -152,17 +163,17 @@ val nexusModules: List<NexusModule> = listOf(
     NexusModule("Web Vuln Scanner", "XSS · SQLi · redirect · traversal · SSRF", Icons.Default.BugReport, NexusRoute.WebVuln.route, Cat.WEB),
     NexusModule("Fuzzer", "ffuf-style · FUZZ · status/size filters", Icons.Default.GridView, NexusRoute.Fuzzer.route, Cat.WEB),
     NexusModule("JS Recon", "Endpoints · API routes · secrets from JS", Icons.Default.Javascript, NexusRoute.JsRecon.route, Cat.WEB),
-    NexusModule("Exposed Files", ".git · .env · backups · configs", Icons.Default.FolderOpen, NexusRoute.Exposed.route, Cat.WEB),
-    NexusModule("GraphQL Inspector", "Detect · introspection · schema map", Icons.Default.Hub, NexusRoute.Graphql.route, Cat.WEB),
-    NexusModule("Subdomain Takeover", "Dangling CNAME · provider fingerprints", Icons.Default.Dns, NexusRoute.Takeover.route, Cat.WEB),
+    NexusModule("Exposed Files", ".git · .env · backups · configs", Icons.Default.Description, NexusRoute.Exposed.route, Cat.WEB),
+    NexusModule("GraphQL Inspector", "Detect · introspection · schema map", Icons.Default.Schema, NexusRoute.Graphql.route, Cat.WEB),
+    NexusModule("Subdomain Takeover", "Dangling CNAME · provider fingerprints", Icons.Default.Dangerous, NexusRoute.Takeover.route, Cat.WEB),
     NexusModule("WebSocket Tester", "Connect · send frames · inspect live", Icons.Default.SwapHoriz, NexusRoute.WebSocket.route, Cat.WEB),
 
     // OSINT & Vulns
     NexusModule("Person Search", "Name · phone · keyword · public web everywhere", Icons.Default.PersonSearch, NexusRoute.Person.route, Cat.INTEL),
-    NexusModule("OSINT Lookup", "Username probes · 30+ platforms · Facebook", Icons.Default.PersonSearch, NexusRoute.Osint.route, Cat.INTEL),
-    NexusModule("Have I Been Pwned", "Real HIBP breaches · pastes · password check", Icons.Default.BugReport, NexusRoute.Hibp.route, Cat.INTEL),
-    NexusModule("CVE Lookup", "NVD search by ID or keyword", Icons.Default.BugReport, NexusRoute.Cve.route, Cat.INTEL),
-    NexusModule("CT Log Enum", "Passive subdomains from crt.sh", Icons.Default.Dns, NexusRoute.CrtSh.route, Cat.INTEL),
+    NexusModule("OSINT Lookup", "Username probes · 30+ platforms · Facebook", Icons.Default.ManageAccounts, NexusRoute.Osint.route, Cat.INTEL),
+    NexusModule("Have I Been Pwned", "Real HIBP breaches · pastes · password check", Icons.Default.GppMaybe, NexusRoute.Hibp.route, Cat.INTEL),
+    NexusModule("CVE Lookup", "NVD search by ID or keyword", Icons.Default.NewReleases, NexusRoute.Cve.route, Cat.INTEL),
+    NexusModule("CT Log Enum", "Passive subdomains from crt.sh", Icons.Default.ReceiptLong, NexusRoute.CrtSh.route, Cat.INTEL),
     NexusModule("Wayback URLs", "Historical URLs · web.archive.org CDX", Icons.Default.History, NexusRoute.Wayback.route, Cat.INTEL),
     NexusModule("EXIF Extractor", "Image metadata · GPS · device", Icons.Default.Image, NexusRoute.Exif.route, Cat.INTEL),
     NexusModule("Dork Builder", "Google + GitHub dorks · code search", Icons.Default.ManageSearch, NexusRoute.Dork.route, Cat.INTEL),
@@ -171,11 +182,11 @@ val nexusModules: List<NexusModule> = listOf(
     // Crypto & Tokens
     NexusModule("Hash / Encoder", "MD5 · SHA · Base64 · URL · Hex", Icons.Default.Fingerprint, NexusRoute.Hash.route, Cat.CRYPTO),
     NexusModule("Hash Cracker", "Identify hash · dictionary attack", Icons.Default.LockOpen, NexusRoute.HashCrack.route, Cat.CRYPTO),
-    NexusModule("JWT Lab", "Decode header · payload · claims", Icons.Default.VpnKey, NexusRoute.Jwt.route, Cat.CRYPTO),
+    NexusModule("JWT Lab", "Decode header · payload · claims", Icons.Default.Token, NexusRoute.Jwt.route, Cat.CRYPTO),
 
     // Mobile & RE
     NexusModule("APK Inspector", "APK/AAB/XAPK · frameworks · RE · browse · extract", Icons.Default.Android, NexusRoute.ApkInspector.route, Cat.MOBILE),
-    NexusModule("APK Security Audit", "MobSF-style risk score · manifest", Icons.Default.Security, NexusRoute.ApkAudit.route, Cat.MOBILE),
+    NexusModule("APK Security Audit", "MobSF-style risk score · manifest", Icons.Default.VerifiedUser, NexusRoute.ApkAudit.route, Cat.MOBILE),
     NexusModule("Deep-Link Tester", "Enumerate app links · launch intents", Icons.Default.Link, NexusRoute.DeepLink.route, Cat.MOBILE),
     NexusModule("Firebase Checker", "Open RTDB read test · /.json", Icons.Default.LocalFireDepartment, NexusRoute.Firebase.route, Cat.MOBILE),
     NexusModule("DEX API Scanner", "Dangerous APIs · crypto · WebView · exec", Icons.Default.Code, NexusRoute.DexScan.route, Cat.MOBILE),

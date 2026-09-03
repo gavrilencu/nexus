@@ -218,7 +218,7 @@ private fun SettingsSection(
                     .background(AccentGradient),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = Color.Black)
+                Icon(icon, contentDescription = null, tint = com.example.toolkit.ui.theme.OnAccent)
             }
             Column(
                 modifier = Modifier

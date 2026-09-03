@@ -45,7 +45,9 @@ class MitmProxyService : Service() {
         if (proxy != null) return
         startForeground(NOTIF_ID, buildNotification())
         ca = MitmCaManager(applicationContext)
-        val p = MitmProxyServer(ca!!)
+        // LAN clients (Wi-Fi proxy on another device) must authenticate; loopback is exempt.
+        val cred = ProxyCredential.random()
+        val p = MitmProxyServer(ca!!, credential = cred)
         p.start()
         proxy = p
         val ip = localIpv4() ?: "127.0.0.1"
@@ -53,8 +55,13 @@ class MitmProxyService : Service() {
             true,
             mode = "proxy",
             port = p.listenPort,
-            hint = "$ip:${p.listenPort}"
+            hint = "$ip:${p.listenPort}",
+            proxyAuth = cred.display
         )
+        // Refresh the notification so it shows the live listen hint + credentials.
+        runCatching {
+            getSystemService(NotificationManager::class.java).notify(NOTIF_ID, buildNotification())
+        }
     }
 
     private fun stopProxy() {
@@ -80,10 +87,12 @@ class MitmProxyService : Service() {
             Intent(this, MitmProxyService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val hint = MitmCaptureBus.stats.value.listenHint.ifBlank { "port ${MitmProxyServer.DEFAULT_PORT}" }
+        val stats = MitmCaptureBus.stats.value
+        val hint = stats.listenHint.ifBlank { "port ${MitmProxyServer.DEFAULT_PORT}" }
+        val auth = stats.proxyAuth.takeIf { it.isNotBlank() }?.let { " · login $it" } ?: ""
         return NotificationCompat.Builder(this, channelId)
             .setContentTitle("NEXUS MITM Proxy")
-            .setContentText("Listening on $hint — install CA for HTTPS")
+            .setContentText("Listening on $hint$auth — install CA for HTTPS")
             .setSmallIcon(R.drawable.ic_stat_nexus)
             .setContentIntent(open)
             .addAction(0, "Stop", stop)

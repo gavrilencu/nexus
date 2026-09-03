@@ -65,7 +65,10 @@ class MitmVpnService : VpnService() {
         startForeground(NOTIF_ID, buildNotification())
 
         ca = MitmCaManager(applicationContext)
-        val p = MitmProxyServer(ca!!) { sock -> protect(sock) }
+        // Transparent capture reaches the proxy over loopback (exempt); the LAN
+        // "proxy fallback" leg is gated by this generated credential.
+        val cred = ProxyCredential.random()
+        val p = MitmProxyServer(ca!!, protect = { sock -> protect(sock) }, credential = cred)
         p.start()
         proxy = p
 
@@ -74,8 +77,12 @@ class MitmVpnService : VpnService() {
             true,
             mode = "vpn",
             port = p.listenPort,
-            hint = "$ip:${p.listenPort}"
+            hint = "$ip:${p.listenPort}",
+            proxyAuth = cred.display
         )
+        runCatching {
+            getSystemService(NotificationManager::class.java).notify(NOTIF_ID, buildNotification())
+        }
 
         val builder = Builder()
             .setSession("NEXUS MITM")
@@ -605,10 +612,12 @@ class MitmVpnService : VpnService() {
             Intent(this, MitmVpnService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val hint = MitmCaptureBus.stats.value.listenHint.ifBlank { "port ${MitmProxyServer.DEFAULT_PORT}" }
+        val stats = MitmCaptureBus.stats.value
+        val hint = stats.listenHint.ifBlank { "port ${MitmProxyServer.DEFAULT_PORT}" }
+        val auth = stats.proxyAuth.takeIf { it.isNotBlank() }?.let { " · login $it" } ?: ""
         return NotificationCompat.Builder(this, channelId)
             .setContentTitle("NEXUS MITM VPN")
-            .setContentText("Transparent MITM active — proxy fallback $hint")
+            .setContentText("Transparent MITM active — proxy fallback $hint$auth")
             .setSmallIcon(R.drawable.ic_stat_nexus)
             .setContentIntent(open)
             .addAction(0, "Stop", stop)

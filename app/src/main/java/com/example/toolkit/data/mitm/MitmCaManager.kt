@@ -2,6 +2,7 @@ package com.example.toolkit.data.mitm
 
 import android.content.Context
 import android.util.Log
+import com.example.toolkit.security.KeystoreCipher
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.X500NameBuilder
 import org.bouncycastle.asn1.x500.style.BCStyle
@@ -42,9 +43,19 @@ class MitmCaManager(context: Context) {
 
     private val dir = File(context.applicationContext.filesDir, "mitm_ca").also { it.mkdirs() }
     private val caCertFile = File(dir, "nexus-mitm-ca.crt")
-    private val caKeyFile = File(dir, "nexus-mitm-ca.key.pk8")
+    private val caKeyFile = File(dir, "nexus-mitm-ca.key.enc")
+    /** Pre-encryption plaintext key from older builds; deleted on sight. */
+    private val legacyKeyFile = File(dir, "nexus-mitm-ca.key.pk8")
     private val caVersionFile = File(dir, "ca_version")
     private val hostCache = ConcurrentHashMap<String, HostMaterial>()
+
+    /**
+     * Random per-process password for the throwaway in-memory KeyStore used only
+     * to build the server [SSLContext]. It never touches disk and lives for the
+     * life of the process, so a constant here bought nothing — this removes it.
+     */
+    private val keystorePassword: CharArray =
+        BigInteger(130, SecureRandom()).toString(32).toCharArray()
 
     val caCertificate: X509Certificate
     private val caKeyPair: KeyPair
@@ -64,10 +75,12 @@ class MitmCaManager(context: Context) {
         val material = loaded ?: generateCa().also { fresh ->
             wipeCaFiles()
             caCertFile.writeBytes(fresh.cert.encoded)
-            caKeyFile.writeBytes(fresh.keyPair.private.encoded)
+            caKeyFile.writeBytes(KeystoreCipher.encrypt(CA_KEY_ALIAS, fresh.keyPair.private.encoded))
             caVersionFile.writeText(CA_VERSION)
             Log.i(TAG, "Generated CA subject=${fresh.cert.subjectX500Principal.name}")
         }
+        // Remove any plaintext key left by an older build (now re-stored encrypted).
+        runCatching { if (legacyKeyFile.exists()) legacyKeyFile.delete() }
         caCertificate = material.cert
         caKeyPair = material.keyPair
     }
@@ -99,9 +112,9 @@ class MitmCaManager(context: Context) {
         val material = hostCache.getOrPut(host.lowercase()) { mintHost(host) }
         val ks = KeyStore.getInstance(KeyStore.getDefaultType())
         ks.load(null, null)
-        ks.setKeyEntry("mitm", material.keyPair.private, PASS, arrayOf(material.cert, caCertificate))
+        ks.setKeyEntry("mitm", material.keyPair.private, keystorePassword, arrayOf(material.cert, caCertificate))
         val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm())
-        kmf.init(ks, PASS)
+        kmf.init(ks, keystorePassword)
         return SSLContext.getInstance("TLS").also { it.init(kmf.keyManagers, null, SecureRandom()) }
     }
 
@@ -118,6 +131,7 @@ class MitmCaManager(context: Context) {
     private fun wipeCaFiles() {
         runCatching { caCertFile.delete() }
         runCatching { caKeyFile.delete() }
+        runCatching { legacyKeyFile.delete() }
         runCatching { caVersionFile.delete() }
         hostCache.clear()
     }
@@ -239,7 +253,7 @@ class MitmCaManager(context: Context) {
     }
 
     private fun loadPrivateKey(file: File): PrivateKey {
-        val bytes = file.readBytes()
+        val bytes = KeystoreCipher.decrypt(CA_KEY_ALIAS, file.readBytes())
         val spec = java.security.spec.PKCS8EncodedKeySpec(bytes)
         return java.security.KeyFactory.getInstance("RSA").generatePrivate(spec)
     }
@@ -251,8 +265,9 @@ class MitmCaManager(context: Context) {
 
     companion object {
         private const val TAG = "MitmCaManager"
-        /** Bump to force regenerate CAs missing Organization / SKI. */
-        private const val CA_VERSION = "4"
-        private val PASS = "nexus".toCharArray()
+        /** Bump to force regenerate CAs missing Organization / SKI, or (v5) stored in plaintext. */
+        private const val CA_VERSION = "5"
+        /** AndroidKeyStore alias of the AES key that wraps the CA private key at rest. */
+        private const val CA_KEY_ALIAS = "nexus_mitm_ca_wrap"
     }
 }

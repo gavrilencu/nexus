@@ -116,7 +116,10 @@ class MitmViewModel(app: Application) : AndroidViewModel(app) {
         else ctx.startService(intent)
         val ip = MitmProxyService.localIpv4() ?: "127.0.0.1"
         _ui.update {
-            it.copy(statusMessage = "Proxy on $ip:${MitmProxyServer.DEFAULT_PORT} — set Wi‑Fi proxy to this")
+            it.copy(
+                statusMessage = "Proxy on $ip:${MitmProxyServer.DEFAULT_PORT} — set Wi‑Fi proxy to this; " +
+                    "LAN clients must use the Basic login shown below"
+            )
         }
     }
 
@@ -259,7 +262,10 @@ class MitmViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun saveCaToCache(manager: MitmCaManager): Uri {
         val ctx = getApplication<Application>()
-        val out = File(ctx.cacheDir, "nexus-mitm-ca.crt")
+        // Dedicated export dir — the FileProvider is scoped to this only, so it can
+        // never hand out other cache files (APK temp, proot downloads, etc.).
+        val dir = File(ctx.cacheDir, "shared").apply { mkdirs() }
+        val out = File(dir, "nexus-mitm-ca.crt")
         out.writeBytes(manager.caDerBytes())
         return FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", out)
     }

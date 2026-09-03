@@ -1,12 +1,16 @@
 package com.example.toolkit.data.network
 
+import com.example.toolkit.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 
 object HttpClients {
+    // Only log request/response headers in debug builds — never leak them to
+    // logcat in a shipped release.
     private val logging = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.HEADERS
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.HEADERS
+        else HttpLoggingInterceptor.Level.NONE
     }
 
     val default: OkHttpClient = OkHttpClient.Builder()
